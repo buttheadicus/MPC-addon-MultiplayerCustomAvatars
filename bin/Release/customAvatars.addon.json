@@ -1,0 +1,9 @@
+{
+  "id": "customAvatars",
+  "displayName": "Custom Multiplayer Avatars",
+  "minCoreVersion": "0.3.0",
+  "enabledByDefault": true,
+  "dependencies": ["CustomAvatar"],
+  "capability": 8,
+  "settingsModSettingsKey": "enableLobbyCustomAvatars"
+}

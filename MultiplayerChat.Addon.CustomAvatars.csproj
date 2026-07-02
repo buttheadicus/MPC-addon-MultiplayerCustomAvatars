@@ -9,9 +9,6 @@
     <AddonManifestFile>customAvatars.addon.json</AddonManifestFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" />
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="MultiplayerChat.Contracts">
       <HintPath>$(ContractsDllPath)</HintPath>
       <Private>false</Private>
@@ -31,42 +28,20 @@
     <Reference Include="SiraUtil">
       <HintPath>$(BeatSaberDir)\Plugins\SiraUtil.dll</HintPath>
     </Reference>
-    <Reference Include="$(BeatSaberDir)\Plugins\MultiplayerCore.dll" Publicize="true">
-      <Private>false</Private>
-    </Reference>
     <Reference Include="BeatSaber.AvatarCore">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.AvatarCore.dll</HintPath>
     </Reference>
     <Reference Include="Tweening">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Tweening.dll</HintPath>
     </Reference>
-    <Reference Include="Zenject">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Zenject.dll</HintPath>
-    </Reference>
-    <Reference Include="HMUI">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\HMUI.dll</HintPath>
-    </Reference>
-    <Reference Include="BSML">
-      <HintPath>$(BeatSaberDir)\Plugins\BSML.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
-    </Reference>
     <Reference Include="LiteNetLib">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\LiteNetLib.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="CustomAvatarsAddon.cs" />
-    <Compile Include="Core\**\*.cs" />
-    <Compile Include="HarmonyPatches\**\*.cs" />
-    <Compile Include="Network\**\*.cs" />
-    <Compile Include="UI\**\*.cs" />
-  </ItemGroup>
-  <ItemGroup>
+    <EmbeddedResource Include="version">
+      <LogicalName>$(AssemblyName).version</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="UI\CustomAvatarsSettingsView.bsml">
       <LogicalName>MultiplayerChat.UI.CustomAvatarsSettingsView.bsml</LogicalName>
     </EmbeddedResource>
@@ -75,4 +50,3 @@
     </None>
   </ItemGroup>
 </Project>
-

@@ -322,10 +322,13 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
             if (MpChatLobbyDiagnostics.AnyGameCoreLoaded())
             {
-                MpChatLobbyCustomAvatarDriverRegistry.ForUser(
-                    userId,
-                    driver => driver.KickArenaFromRemoteSync(),
-                    lobbyPedestalsOnly: false);
+                if (MpChatLobbyDiagnostics.ResultsLikeUiVisible())
+                    MpChatResultsPedestalAttach.ScanResultsPedestals(force: true);
+                else
+                    MpChatLobbyCustomAvatarDriverRegistry.ForUser(
+                        userId,
+                        driver => driver.KickFromRemoteSync(),
+                        lobbyPedestalsOnly: false);
             }
             else if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork ||
                      MpChatPerformanceGate.ShouldDeferIncomingAvatarData)
@@ -734,7 +737,10 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
             if (MpChatLobbyDiagnostics.AnyGameCoreLoaded())
             {
-                MpChatLobbyCustomAvatarDriverRegistry.WakePendingArenaLoads();
+                if (MpChatLobbyDiagnostics.ResultsLikeUiVisible())
+                    MpChatResultsPedestalAttach.ScanResultsPedestals();
+                else
+                    MpChatLobbyCustomAvatarDriverRegistry.WakePendingArenaLoads();
             }
             else if (!MpChatPerformanceGate.ShouldBlockAvatarHeavyWork &&
                      MpChatLobbyDiagnostics.LobbyHierarchyLooksLikeMultiplayerLobby())

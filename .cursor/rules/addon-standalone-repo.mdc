@@ -1,0 +1,23 @@
+---
+description: Addon work lives in this standalone repo, not BeatSaber-Multiplayer-Chat/Addons
+alwaysApply: true
+---
+
+# Addon standalone repo
+
+This repo is the **source of truth** for this addon. Do not mirror changes under `BeatSaber-Multiplayer-Chat/Addons/`.
+
+## Sibling addon repos
+
+| Addon | Repo |
+|-------|------|
+| Custom Avatars | `c:\Users\goria\MPC-addon-MultiplayerCustomAvatars` |
+| Avatar Coloring | `c:\Users\goria\MPC-addon-AvatarColoringExtentions` |
+| Quick Binds | `c:\Users\goria\MPC-addon-QuickBinds` |
+
+## Rules
+
+1. Edit and build addon code **in this repo only**.
+2. Do not modify `MultiplayerChat.dll` for addon fixes unless the user explicitly approves a core release in `BeatSaber-Multiplayer-Chat`.
+3. Use existing core bridges (`IMpChatHost`, etc.); do not change bridge contracts without approval.
+4. Release: `dotnet build -c Release` copies DLL + manifest to `releases/Plugins/MultiplayerChat/Addons/` and the configured Beat Saber instance.

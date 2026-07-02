@@ -221,7 +221,13 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
         ChatManager.Instance?.RequestRemoveSystemMessage(message);
     }
 
-    private void Update() => MpChatLobbyPosePoll.TickFromHost();
+    private void Update()
+    {
+        MpChatLobbyPosePoll.TickFromHost();
+
+        if (MpChatLobbyDiagnostics.ResultsLikeUiVisible())
+            MpChatResultsPedestalAttach.ScanResultsPedestals();
+    }
 
     private void OnEnable()
     {

@@ -70,6 +70,15 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
 
     internal bool IsArenaContextForRegistry() => IsArenaContext();
 
+    internal bool IsResultsPedestalContext()
+    {
+        if (!string.Equals(gameObject.scene.name, "GameCore", StringComparison.Ordinal))
+            return false;
+
+        return GetComponent<MultiplayerLobbyAvatarController>() != null ||
+               GetComponentInParent<MultiplayerLobbyAvatarController>() != null;
+    }
+
     internal bool IsMirrorPedestalForRegistry() => IsMirrorPedestal();
 
     internal void ApplyResolvedDependencies(
@@ -438,7 +447,8 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
     }
 
     private bool IsArenaContext() =>
-        string.Equals(gameObject.scene.name, "GameCore", StringComparison.Ordinal);
+        string.Equals(gameObject.scene.name, "GameCore", StringComparison.Ordinal) &&
+        !IsResultsPedestalContext();
 
     private Transform? GetFacadeRoot() =>
         MpChatArenaFacadeRoots.FindFrom(_poseController != null ? _poseController.transform : transform);
@@ -704,9 +714,11 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         BeginLoadForHash(hash, Mathf.Clamp(scale, 0.25f, 4f), bypassPedestalDefer);
     }
 
-    internal void KickArenaFromRemoteSync()
+    internal void KickArenaFromRemoteSync() => KickFromRemoteSync();
+
+    internal void KickFromRemoteSync()
     {
-        if (!IsArenaContext())
+        if (!IsArenaContext() && !IsResultsPedestalContext())
             return;
 
         TryBeginStartup();
@@ -721,7 +733,10 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         if (MpChatPerformanceGate.ShouldBlockAvatarHeavyWorkForDriver(IsArenaContext()))
             return;
 
-        if (!IsArenaContext() && !bypassPedestalDefer && MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
+        if (!IsArenaContext() &&
+            !IsResultsPedestalContext() &&
+            !bypassPedestalDefer &&
+            MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
             return;
 
         if (!MpCustomAvatarSyncManager.TryGetRemoteState(_connectedPlayer.userId, out var row))
@@ -831,13 +846,18 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         if (IsArenaContext())
             MpChatArenaTiming.NotifyArenaSpawnAttempt();
 
-        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork && !IsArenaContext())
+        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork &&
+            !IsArenaContext() &&
+            !IsResultsPedestalContext())
             return;
 
         if (MpChatPerformanceGate.ShouldBlockAvatarHeavyWorkForDriver(IsArenaContext()))
             return;
 
-        if (!IsArenaContext() && !bypassPedestalDefer && MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
+        if (!IsArenaContext() &&
+            !IsResultsPedestalContext() &&
+            !bypassPedestalDefer &&
+            MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
             return;
 
         if (string.Equals(_lastSpawnedHash, hash, StringComparison.OrdinalIgnoreCase) &&
@@ -893,7 +913,9 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         if (IsArenaContext() && MpChatAvatarWorkloadGate.ShouldDeferArenaAvatarSpawn)
             return;
 
-        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork && !IsArenaContext())
+        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork &&
+            !IsArenaContext() &&
+            !IsResultsPedestalContext())
             return;
 
         if (MpChatPerformanceGate.ShouldBlockAvatarHeavyWorkForDriver(IsArenaContext()))
@@ -1075,6 +1097,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
 
         if (!IsArenaContext() &&
             !_loadBypassesPedestalDefer &&
+            !IsResultsPedestalContext() &&
             MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
         {
             EndLoadCoroutine();
@@ -1239,7 +1262,11 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
             }
 
             _finalizeComplete = true;
-            var context = IsArenaContext() ? "arena" : "pedestal";
+            var context = IsResultsPedestalContext()
+                ? "results"
+                : IsArenaContext()
+                    ? "arena"
+                    : "pedestal";
             MultiplayerChat.Plugin.Log?.Info(
                 $"[MPChat][LobbyAvatar] Showing custom avatar on {context} for {_connectedPlayer.userId} (hash {_lastSpawnedHash})");
         }

@@ -5,7 +5,7 @@ namespace MultiplayerChat.Network;
 
 public class MpCustomAvatarPosePacket : MultiplayerCore.Networking.Abstractions.MpPacket
 {
-    public const byte WireVersion = 1;
+    public const byte WireVersion = 2;
 
     public const byte FlagHasDescriptor = 1;
 
@@ -24,6 +24,9 @@ public class MpCustomAvatarPosePacket : MultiplayerCore.Networking.Abstractions.
     public float AvatarScale = 1f;
 
     public byte[]? FbtBlob;
+
+    // When set, only the targeted peer should apply this update for the sender.
+    public string? TargetUserId;
 
     public override void Serialize(NetDataWriter writer)
     {
@@ -47,6 +50,8 @@ public class MpCustomAvatarPosePacket : MultiplayerCore.Networking.Abstractions.
 
             writer.PutBytesWithLength(blob);
         }
+
+        writer.Put(TargetUserId ?? "");
     }
 
     public override void Deserialize(NetDataReader reader)
@@ -55,12 +60,13 @@ public class MpCustomAvatarPosePacket : MultiplayerCore.Networking.Abstractions.
         AvatarDescriptorId = null;
         AvatarScale = 1f;
         FbtBlob = null;
+        TargetUserId = null;
 
         if (reader.AvailableBytes <= 0)
             return;
 
         var ver = reader.GetByte();
-        if (ver != WireVersion)
+        if (ver != 1 && ver != WireVersion)
         {
             MultiplayerChat.Plugin.Log?.Warn($"[MPChat][LobbyAvatar] Unsupported MpCustomAvatarPosePacket wire version {ver}");
             return;
@@ -103,6 +109,12 @@ public class MpCustomAvatarPosePacket : MultiplayerCore.Networking.Abstractions.
                 MultiplayerChat.Plugin.Log?.Warn($"[MPChat][LobbyAvatar] FBT blob deserialize failed: {ex.Message}");
                 FbtBlob = null;
             }
+        }
+
+        if (ver >= WireVersion && reader.AvailableBytes > 0)
+        {
+            var target = reader.GetString();
+            TargetUserId = string.IsNullOrEmpty(target) ? null : target;
         }
     }
 

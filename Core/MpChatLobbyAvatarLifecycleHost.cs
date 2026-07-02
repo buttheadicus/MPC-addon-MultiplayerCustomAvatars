@@ -26,7 +26,7 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
 
     private static readonly List<string> PendingLeaveUserIds = new(8);
 
-    private static bool _pendingJoinBroadcastMetadata;
+    private static bool _pendingJoinSendMetadataToPeers;
 
     private static readonly object PendingJoinLock = new();
 
@@ -34,7 +34,7 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
 
     private void Awake() => Instance = this;
 
-    public static void QueuePlayerJoinAvatarWork(string userId, bool broadcastMetadata = false)
+    public static void QueuePlayerJoinAvatarWork(string userId, bool sendMetadataToJoiner = false)
     {
         if (string.IsNullOrEmpty(userId))
             return;
@@ -43,8 +43,8 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
         {
             if (!PendingJoinUserIds.Contains(userId))
                 PendingJoinUserIds.Add(userId);
-            if (broadcastMetadata)
-                _pendingJoinBroadcastMetadata = true;
+            if (sendMetadataToJoiner)
+                _pendingJoinSendMetadataToPeers = true;
         }
 
         if (Instance != null)
@@ -54,8 +54,8 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
         }
 
         MpChatLobbyCustomAvatarDriver.ProcessPlayerJoinedImmediate(userId);
-        if (broadcastMetadata && MpChatFeatures.LobbyCustomAvatars && ModSettings.EnableLobbyCustomAvatars)
-            MpCustomAvatarSyncManager.BroadcastMetadataNow(applySavedEyeHeight: false, forceSend: true);
+        if (sendMetadataToJoiner && MpChatFeatures.LobbyCustomAvatars && ModSettings.EnableLobbyCustomAvatars)
+            MpCustomAvatarSyncManager.SendLocalMetadataToUser(userId);
     }
 
     private void EnsureJoinBatchCoroutine()
@@ -71,7 +71,7 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
         yield return null;
 
         string[] userIds;
-        var broadcastMetadata = false;
+        var sendMetadataToJoiners = false;
         lock (PendingJoinLock)
         {
             if (PendingJoinUserIds.Count == 0)
@@ -82,19 +82,23 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
 
             userIds = PendingJoinUserIds.ToArray();
             PendingJoinUserIds.Clear();
-            broadcastMetadata = _pendingJoinBroadcastMetadata;
-            _pendingJoinBroadcastMetadata = false;
+            sendMetadataToJoiners = _pendingJoinSendMetadataToPeers;
+            _pendingJoinSendMetadataToPeers = false;
         }
 
         for (var i = 0; i < userIds.Length; i++)
         {
-            MpChatLobbyCustomAvatarDriver.ProcessPlayerJoinedImmediate(userIds[i]);
+            if (!MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork)
+                MpChatLobbyCustomAvatarDriver.ProcessPlayerJoinedImmediate(userIds[i]);
             if (userIds.Length > 1 && i < userIds.Length - 1)
                 yield return null;
         }
 
-        if (broadcastMetadata && MpChatFeatures.LobbyCustomAvatars && ModSettings.EnableLobbyCustomAvatars)
-            MpCustomAvatarSyncManager.BroadcastMetadataNow(applySavedEyeHeight: false, forceSend: true);
+        if (sendMetadataToJoiners && MpChatFeatures.LobbyCustomAvatars && ModSettings.EnableLobbyCustomAvatars)
+        {
+            for (var i = 0; i < userIds.Length; i++)
+                MpCustomAvatarSyncManager.SendLocalMetadataToUser(userIds[i]);
+        }
 
         _pendingJoinBatch = null;
     }
@@ -104,7 +108,7 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
         lock (PendingJoinLock)
         {
             PendingJoinUserIds.Clear();
-            _pendingJoinBroadcastMetadata = false;
+            _pendingJoinSendMetadataToPeers = false;
         }
 
         lock (PendingLeaveLock)
@@ -255,13 +259,20 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
 
     private Coroutine? _pendingArenaScan;
 
-    private void ScheduleArenaAvatarScan()
+    private static readonly float[] ArenaScanDelaySeconds = { 0.35f, 1f, 2f, 4f, 7f, 11f, 16f };
+
+    public static void ScheduleArenaAvatarScan()
     {
         if (!MpChatFeatures.LobbyCustomAvatars || !ModSettings.EnableLobbyCustomAvatars)
             return;
         if (!MpChatFeatures.LobbyCustomAvatarsInArena)
             return;
 
+        Instance?.ScheduleArenaAvatarScanInternal();
+    }
+
+    private void ScheduleArenaAvatarScanInternal()
+    {
         if (_pendingArenaScan != null)
             StopCoroutine(_pendingArenaScan);
         _pendingArenaScan = StartCoroutine(ScanArenaAvatarsAfterGameCoreLoad());
@@ -269,10 +280,20 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
 
     private IEnumerator ScanArenaAvatarsAfterGameCoreLoad()
     {
-        yield return new WaitForSecondsRealtime(0.35f);
-        MpChatArenaAvatarAttach.ScanGameCoreAvatars();
-        yield return new WaitForSecondsRealtime(2f);
-        MpChatArenaAvatarAttach.ScanGameCoreAvatars();
+        var previous = 0f;
+        for (var i = 0; i < ArenaScanDelaySeconds.Length; i++)
+        {
+            var delay = ArenaScanDelaySeconds[i];
+            yield return new WaitForSecondsRealtime(delay - previous);
+            previous = delay;
+
+            if (!MpChatLobbyDiagnostics.AnyGameCoreLoaded())
+                break;
+
+            MpChatArenaAvatarAttach.ScanGameCoreAvatars();
+            MpChatLobbyCustomAvatarDriverRegistry.WakePendingArenaLoads();
+        }
+
         _pendingArenaScan = null;
     }
 
@@ -300,6 +321,7 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
         try
         {
             MpChatLobbyDiagnostics.InvalidateSceneHeuristicCaches();
+            MpChatAddonPacketBridge.ReattachCallbacks();
             MpChatLobbyPosePoll.ClearAll();
 
             const float lobbyWaitTimeoutSeconds = 6f;
@@ -321,13 +343,13 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
                 yield break;
 
             MpCustomAvatarSyncManager.EnsureActiveLobbyHostAfterArena();
-            MpCustomAvatarLobbyTransferManager.FlushDeferredLobbyAvatarFileTransfers(rescanMissingRemotes: true);
-            MpCustomAvatarSyncManager.InvalidateOutboundDedupe();
+            MpCustomAvatarLobbyTransferManager.ScheduleGradualLobbyReturnFlush();
             MpCustomAvatarSyncManager.PollDeferredAvatarUpdates();
-            yield return MpChatLobbyCustomAvatarDriver.RefreshAllLobbyPedestalsStaggered(forceRespawn: true);
+            yield return MpChatLobbyCustomAvatarDriver.RefreshAllLobbyPedestalsStaggered(forceRespawn: false);
 
             RebootstrapConnectedLobbyAvatars();
             yield return FollowUpLobbyAvatarRefreshIfNeeded();
+            MpChatLobbyCustomAvatarDriver.ReregisterAllPosePolls();
 
             MultiplayerChat.Plugin.Log?.Debug($"[MPChat][LobbyAvatar] Refreshed lobby avatars after {reason}");
         }
@@ -355,10 +377,8 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
                 continue;
 
             MpCustomAvatarSyncManager.ScheduleJoinRetry(player.userId);
-            MpChatLobbyCustomAvatarDriver.ProcessPlayerJoinedImmediate(player.userId);
+            QueuePlayerJoinAvatarWork(player.userId);
         }
-
-        MpCustomAvatarSyncManager.BroadcastMetadataNow(applySavedEyeHeight: false, forceSend: true);
     }
 
     private static IEnumerator FollowUpLobbyAvatarRefreshIfNeeded()

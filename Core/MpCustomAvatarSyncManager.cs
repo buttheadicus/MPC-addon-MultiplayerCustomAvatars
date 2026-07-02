@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using MultiplayerChat.Core.QuickBinds;
 using MultiplayerChat.Network;
 using MultiplayerChat.Settings;
 using MultiplayerCore.Models;
@@ -28,54 +27,52 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     private static readonly HashSet<string> DeferredNotifyUserIds = new(StringComparer.Ordinal);
 
-    private static bool _wasDeferringIncomingAvatarData;
-
     private static readonly object JoinRetryLock = new();
 
     private static readonly Dictionary<string, float> JoinRetryDeadlineByUserId =
         new(StringComparer.Ordinal);
 
-    private const float MetadataBroadcastIntervalSeconds = 2f;
-
     private const float JoinRetryWindowSeconds = 30f;
 
     private const float JoinRetryPollIntervalSeconds = 0.75f;
 
-    private const float ForcedMetadataMinIntervalSeconds = 2.5f;
-
-    private static float _lastForcedMetadataRealtime = -999f;
+    private const float MaintenanceIntervalSeconds = 0.35f;
 
     private static float _lastJoinRetryPollRealtime;
 
-    private const float MetadataKeepaliveSeconds = 25f;
-
     private const float ScaleEpsilon = 0.002f;
 
-    [Inject] private readonly IMultiplayerSessionManager _sessionManager = null!;
+    [Inject(Optional = true)] private readonly IMultiplayerSessionManager? _sessionManager;
 
-    private Coroutine? _broadcastRoutine;
+    private Coroutine? _maintenanceRoutine;
 
-    private static readonly WaitForSeconds MetadataWait =
-        new WaitForSeconds(MetadataBroadcastIntervalSeconds);
-
-    private string? _lastSentDescriptor;
-
-    private float _lastSentScale = 1f;
-
-    private float _lastSendRealtime;
+    private static readonly WaitForSeconds MaintenanceWait =
+        new WaitForSeconds(MaintenanceIntervalSeconds);
 
     private readonly MpCustomAvatarPosePacket _outboundPacket = new();
 
-    public void Initialize()
+    private bool _started;
+
+    private bool _lobbySessionBootstrapComplete;
+
+    private Coroutine? _lobbyBootstrapRoutine;
+
+    public void Initialize() => EnsureInitialized();
+
+    // Persistent addon hosts are not Zenject-initialized; CustomAvatarsAddon calls this after Inject.
+    public void EnsureInitialized()
     {
+        if (_started)
+            return;
+
+        _started = true;
         var gameCoreHost = MpChatSceneScope.IsGameCoreHost(this);
 
         if (gameCoreHost)
         {
             Instance = this;
-            ClearBroadcastDedupeState();
             MultiplayerChat.Plugin.Log?.Debug("[MPChat][LobbyAvatar] Sync manager active (GameCore host)");
-            StartBroadcastLoop();
+            StartMaintenanceLoop();
             StartCoroutine(BootstrapArenaRemoteAvatars());
             return;
         }
@@ -88,11 +85,13 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         }
 
         ResetSessionAvatarSyncState();
-        StartBroadcastLoop();
-        StartCoroutine(BootstrapExistingRemoteAvatars());
+        StartMaintenanceLoop();
         if (ModSettings.EnableLobbyCustomAvatars && ModSettings.HasLobbyCustomAvatarSavedEyeHeight)
             StartCoroutine(ApplySavedEyeHeightWhenReady());
     }
+
+    private IMultiplayerSessionManager? ResolveSessionManager() =>
+        MpChatAddonSessionResolver.Resolve(_sessionManager);
 
     // Remote metadata is static across lobby + GameCore; hand Instance back after arena teardown.
     internal static void EnsureActiveLobbyHostAfterArena()
@@ -112,9 +111,26 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     internal static void OnVoipPipelineReloaded()
     {
+        MpChatAddonPacketBridge.ReattachCallbacks();
+        EnsureActiveLobbyHostAfterArena();
         if (Instance != null && MpChatSceneScope.IsGameCoreHost(Instance)
             && !MpChatLobbyDiagnostics.AnyGameCoreLoaded() && _lobbyScopeSyncManager != null)
             Instance = _lobbyScopeSyncManager;
+
+        if (MpChatLobbyDiagnostics.AnyGameCoreLoaded())
+            MpChatLobbyAvatarLifecycleHost.ScheduleArenaAvatarScan();
+    }
+
+    private static MpCustomAvatarSyncManager? ResolveActiveSendHost()
+    {
+        var lobby = _lobbyScopeSyncManager;
+        if (lobby != null && lobby.isActiveAndEnabled)
+            return lobby;
+
+        if (Instance != null && !MpChatSceneScope.IsGameCoreHost(Instance))
+            return Instance;
+
+        return lobby;
     }
 
     private IEnumerator BootstrapArenaRemoteAvatars()
@@ -127,8 +143,9 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         yield return new WaitForSecondsRealtime(0.35f);
         MpChatArenaAvatarAttach.ScanGameCoreAvatars();
 
-        var connected = _sessionManager.connectedPlayers;
-        var local = _sessionManager.localPlayer;
+        var session = ResolveSessionManager();
+        var connected = session?.connectedPlayers;
+        var local = session?.localPlayer;
         if (connected == null)
             yield break;
 
@@ -150,46 +167,73 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     private IEnumerator BootstrapExistingRemoteAvatars()
     {
-        if (MpChatSceneScope.IsGameCoreHost(this))
-            yield break;
-
-        const float waitTimeoutSeconds = 8f;
-        var waitStart = Time.realtimeSinceStartup;
-        while (Time.realtimeSinceStartup - waitStart < waitTimeoutSeconds)
+        try
         {
-            if (MpChatLobbyDiagnostics.LobbyHierarchyLooksLikeMultiplayerLobby())
-                break;
+            if (MpChatSceneScope.IsGameCoreHost(this))
+                yield break;
 
-            yield return new WaitForSeconds(0.25f);
+            const float waitTimeoutSeconds = 8f;
+            var waitStart = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - waitStart < waitTimeoutSeconds)
+            {
+                if (MpChatLobbyDiagnostics.LobbyHierarchyLooksLikeMultiplayerLobby())
+                    break;
+
+                yield return new WaitForSeconds(0.25f);
+            }
+
+            if (!MpChatFeatures.LobbyCustomAvatars || !ModSettings.EnableLobbyCustomAvatars)
+                yield break;
+
+            var session = ResolveSessionManager();
+            if (!MpChatLobbyDiagnostics.MultiplayerAvatarSyncContextActive(session))
+                yield break;
+
+            if (MpChatPerformanceGate.IsMultiplayerSceneTransitionLikely())
+                yield break;
+
+            var local = session?.localPlayer;
+            var connected = session?.connectedPlayers;
+            if (connected == null)
+                yield break;
+
+            for (var i = 0; i < connected.Count; i++)
+            {
+                var player = connected[i];
+                if (player == null || string.IsNullOrEmpty(player.userId))
+                    continue;
+                if (local != null && player.userId == local.userId)
+                    continue;
+
+                NotifyRemoteAvatarMayBeReady(player.userId);
+                yield return null;
+            }
+
+            BroadcastLocalMetadataToSession();
+            _lobbySessionBootstrapComplete = true;
         }
+        finally
+        {
+            _lobbyBootstrapRoutine = null;
+        }
+    }
 
+    private void TryStartLobbySessionBootstrap()
+    {
+        if (_lobbySessionBootstrapComplete || _lobbyBootstrapRoutine != null)
+            return;
         if (!MpChatFeatures.LobbyCustomAvatars || !ModSettings.EnableLobbyCustomAvatars)
-            yield break;
+            return;
 
-        if (!MpChatLobbyDiagnostics.MultiplayerAvatarSyncContextActive(_sessionManager))
-            yield break;
+        MpChatAddonPacketBridge.ReattachCallbacks();
 
-        if (MpChatPerformanceGate.IsMultiplayerSceneTransitionLikely())
-            yield break;
+        var session = ResolveSessionManager();
+        if (session?.localPlayer == null || string.IsNullOrEmpty(session.localPlayer.userId))
+            return;
+        if (!MpChatLobbyDiagnostics.MultiplayerAvatarSyncContextActive(session))
+            return;
 
-        var local = _sessionManager.localPlayer;
-        var connected = _sessionManager.connectedPlayers;
-        if (connected == null)
-            yield break;
-
-        for (var i = 0; i < connected.Count; i++)
-        {
-            var player = connected[i];
-            if (player == null || string.IsNullOrEmpty(player.userId))
-                continue;
-            if (local != null && player.userId == local.userId)
-                continue;
-
-            NotifyRemoteAvatarMayBeReady(player.userId);
-            yield return null;
-        }
-
-        BroadcastMetadataNow(applySavedEyeHeight: false, forceSend: true);
+        _lobbyBootstrapRoutine = StartCoroutine(BootstrapExistingRemoteAvatars());
     }
 
     private IEnumerator ApplySavedEyeHeightWhenReady()
@@ -201,11 +245,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
                 yield break;
 
             if (MpCustomAvatarHeightCalibration.ApplySavedPresetIfAny())
-            {
-                InvalidateOutboundDedupe();
-                TryBroadcastMetadata();
                 yield break;
-            }
 
             yield return new WaitForSeconds(0.5f);
         }
@@ -274,7 +314,21 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
         if (changed)
         {
-            if (MpChatPerformanceGate.ShouldDeferIncomingAvatarData)
+            if (descriptorChanged && !string.IsNullOrEmpty(descriptor))
+            {
+                MultiplayerChat.Plugin.Log?.Info(
+                    $"[MPChat][LobbyAvatar] Remote avatar metadata from {userId} hash={descriptor!.Trim().ToUpperInvariant()}");
+            }
+
+            if (MpChatLobbyDiagnostics.AnyGameCoreLoaded())
+            {
+                MpChatLobbyCustomAvatarDriverRegistry.ForUser(
+                    userId,
+                    driver => driver.KickArenaFromRemoteSync(),
+                    lobbyPedestalsOnly: false);
+            }
+            else if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork ||
+                     MpChatPerformanceGate.ShouldDeferIncomingAvatarData)
             {
                 lock (DeferredNotifyLock)
                     DeferredNotifyUserIds.Add(userId);
@@ -299,29 +353,22 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     public static void PollDeferredAvatarUpdates()
     {
-        var deferring = MpChatPerformanceGate.ShouldDeferIncomingAvatarData;
+        var deferring = MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork ||
+                        MpChatPerformanceGate.ShouldDeferIncomingAvatarData;
         if (deferring)
-        {
-            _wasDeferringIncomingAvatarData = true;
-            return;
-        }
-
-        if (!_wasDeferringIncomingAvatarData && DeferredNotifyUserIds.Count == 0)
             return;
 
-        _wasDeferringIncomingAvatarData = false;
-        string[] pending;
         lock (DeferredNotifyLock)
         {
             if (DeferredNotifyUserIds.Count == 0)
                 return;
-            pending = new string[DeferredNotifyUserIds.Count];
-            DeferredNotifyUserIds.CopyTo(pending);
-            DeferredNotifyUserIds.Clear();
-        }
 
-        foreach (var userId in pending)
+            using var enumerator = DeferredNotifyUserIds.GetEnumerator();
+            enumerator.MoveNext();
+            var userId = enumerator.Current;
+            DeferredNotifyUserIds.Remove(userId);
             RemoteLobbyAvatarUpdated?.Invoke(userId);
+        }
     }
 
     public static void NotifyAllRemotesWithHash(string hash)
@@ -330,38 +377,34 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
             return;
 
         hash = hash.Trim().ToUpperInvariant();
-        string[] userIds;
         lock (RemoteLock)
         {
             if (RemoteByUserId.Count == 0)
                 return;
 
-            var matches = new List<string>(RemoteByUserId.Count);
-            foreach (var kvp in RemoteByUserId)
+            lock (DeferredNotifyLock)
             {
-                if (string.Equals(kvp.Value.AvatarDescriptorId, hash, StringComparison.OrdinalIgnoreCase))
-                    matches.Add(kvp.Key);
+                foreach (var kvp in RemoteByUserId)
+                {
+                    if (!string.Equals(kvp.Value.AvatarDescriptorId, hash, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    DeferredNotifyUserIds.Add(kvp.Key);
+                }
             }
-
-            if (matches.Count == 0)
-                return;
-
-            userIds = matches.ToArray();
         }
-
-        for (var i = 0; i < userIds.Length; i++)
-            RemoteLobbyAvatarUpdated?.Invoke(userIds[i]);
     }
 
-    public static void NotifyRemoteAvatarMayBeReady(string userId, bool broadcastMetadata = false)
+    public static void NotifyRemoteAvatarMayBeReady(string userId, bool sendMetadataToJoiner = false)
     {
         if (string.IsNullOrEmpty(userId))
             return;
 
         ScheduleJoinRetry(userId);
-        MpChatLobbyAvatarLifecycleHost.QueuePlayerJoinAvatarWork(userId, broadcastMetadata);
+        MpChatLobbyAvatarLifecycleHost.QueuePlayerJoinAvatarWork(userId, sendMetadataToJoiner);
 
-        if (MpChatPerformanceGate.ShouldDeferIncomingAvatarData)
+        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork ||
+            MpChatPerformanceGate.ShouldDeferIncomingAvatarData)
         {
             lock (DeferredNotifyLock)
                 DeferredNotifyUserIds.Add(userId);
@@ -397,7 +440,8 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     private static void PollJoinRetries()
     {
-        if (MpChatPerformanceGate.ShouldDeferIncomingAvatarData)
+        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork ||
+            MpChatPerformanceGate.ShouldDeferIncomingAvatarData)
             return;
 
         string[] pending;
@@ -459,8 +503,6 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         lock (DeferredNotifyLock)
             DeferredNotifyUserIds.Clear();
 
-        _wasDeferringIncomingAvatarData = false;
-        _lastForcedMetadataRealtime = -999f;
         MpCustomAvatarLobbyTransferManager.ClearLobbyAvatarTransferMemoryCaches();
     }
 
@@ -468,7 +510,10 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
     {
         ClearAllRemotes();
         if (Instance != null)
-            Instance.ClearBroadcastDedupeState();
+        {
+            Instance._lobbySessionBootstrapComplete = false;
+            Instance._lobbyBootstrapRoutine = null;
+        }
     }
 
     // Full teardown when the multiplayer session is no longer connected.
@@ -479,7 +524,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
         try
         {
-            if (MpLobbySessionExit.IsSessionConnected())
+            if (MpMultiplayerSessionReflection.IsSessionConnected())
                 return;
         }
         catch
@@ -501,24 +546,24 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         MpChatLobbyPosePoll.ClearAll();
         MpChatArenaAvatarAttach.DestroyOrphanedArenaObjects();
         CustomAvatarLobbyHashCache.Invalidate();
-        StopLobbyScopeBroadcastIfActive();
+        StopLobbyScopeMaintenanceIfActive();
         ResetSessionAvatarSyncState();
         MpCustomAvatarScaleSource.InvalidateCachedManager();
     }
 
-    private static void StopLobbyScopeBroadcastIfActive()
+    private static void StopLobbyScopeMaintenanceIfActive()
     {
         var lobby = _lobbyScopeSyncManager;
-        if (lobby == null || lobby._broadcastRoutine == null)
+        if (lobby == null || lobby._maintenanceRoutine == null)
             return;
 
-        lobby.StopCoroutine(lobby._broadcastRoutine);
-        lobby._broadcastRoutine = null;
+        lobby.StopCoroutine(lobby._maintenanceRoutine);
+        lobby._maintenanceRoutine = null;
     }
 
     private static float _lastMissingRemoteScanRealtime = -999f;
 
-    private const float MissingRemoteScanCooldownSeconds = 2.5f;
+    private const float MissingRemoteScanCooldownSeconds = 1.25f;
 
     public static void RequestMissingRemoteAvatarFiles()
     {
@@ -566,39 +611,44 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     public static void InvalidateOutboundDedupe()
     {
-        _lastForcedMetadataRealtime = -999f;
-        if (Instance != null)
-            Instance.ClearBroadcastDedupeState();
+        // Kept for settings callers; metadata is event-driven now (no outbound dedupe state).
     }
 
-    public static void BroadcastMetadataNow(bool applySavedEyeHeight = true, bool forceSend = false)
+    internal static bool ShouldAcceptPosePacket(MpCustomAvatarPosePacket packet)
     {
-        if (Instance == null)
+        if (string.IsNullOrEmpty(packet.TargetUserId))
+            return true;
+
+        var local = Instance?.ResolveSessionManager()?.localPlayer;
+        return local != null &&
+               !string.IsNullOrEmpty(local.userId) &&
+               string.Equals(packet.TargetUserId, local.userId, StringComparison.Ordinal);
+    }
+
+    // Tell everyone in the session which avatar we use (session join / avatar change / height calibrate).
+    public static void BroadcastLocalMetadataToAll()
+    {
+        ResolveActiveSendHost()?.SendLocalMetadata(targetUserId: null, includeDescriptor: true, includeScale: true);
+    }
+
+    // Tell existing peers our avatar once after we join their session.
+    public static void BroadcastLocalMetadataToSession() => BroadcastLocalMetadataToAll();
+
+    // Tell one newly joined peer our avatar; they request the file if needed.
+    public static void SendLocalMetadataToUser(string targetUserId)
+    {
+        if (string.IsNullOrEmpty(targetUserId))
             return;
 
-        if (forceSend)
-        {
-            var now = Time.realtimeSinceStartup;
-            if (now - _lastForcedMetadataRealtime < ForcedMetadataMinIntervalSeconds)
-                return;
-
-            _lastForcedMetadataRealtime = now;
-        }
-
-        Instance.TryBroadcastMetadata(applySavedEyeHeight, forceSend);
-    }
-
-    public static void BroadcastScaleOnlyNow()
-    {
-        if (Instance != null)
-            Instance.TryBroadcastScaleOnly();
+        ResolveActiveSendHost()?.SendLocalMetadata(targetUserId, includeDescriptor: true, includeScale: true);
     }
 
     // Height calibrate: scale packet first so peers apply height before a full metadata/spawn refresh.
     public static void BroadcastScaleThenMetadata()
     {
-        BroadcastScaleOnlyNow();
-        BroadcastMetadataNow();
+        var host = ResolveActiveSendHost();
+        host?.SendLocalMetadata(targetUserId: null, includeDescriptor: false, includeScale: true);
+        host?.SendLocalMetadata(targetUserId: null, includeDescriptor: true, includeScale: true);
     }
 
     public static void RunHeightCalibration()
@@ -620,10 +670,10 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         if (iAmLobby)
             _lobbyScopeSyncManager = null;
 
-        if (_broadcastRoutine != null)
+        if (_maintenanceRoutine != null)
         {
-            StopCoroutine(_broadcastRoutine);
-            _broadcastRoutine = null;
+            StopCoroutine(_maintenanceRoutine);
+            _maintenanceRoutine = null;
         }
 
         if (ReferenceEquals(Instance, this))
@@ -664,152 +714,102 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         }
     }
 
-    private void StartBroadcastLoop()
+    private void StartMaintenanceLoop()
     {
-        if (_broadcastRoutine != null)
-            StopCoroutine(_broadcastRoutine);
-        _broadcastRoutine = StartCoroutine(BroadcastLoop());
+        if (_maintenanceRoutine != null)
+            StopCoroutine(_maintenanceRoutine);
+        _maintenanceRoutine = StartCoroutine(MaintenanceLoop());
     }
 
-    private IEnumerator BroadcastLoop()
+    private IEnumerator MaintenanceLoop()
     {
         while (true)
         {
-            yield return MetadataWait;
-            if (!MpChatLobbyDiagnostics.MultiplayerAvatarSyncContextActive(_sessionManager))
+            yield return MaintenanceWait;
+            var session = ResolveSessionManager();
+            if (!MpChatLobbyDiagnostics.MultiplayerAvatarSyncContextActive(session))
                 continue;
 
-            TryBroadcastMetadata();
-            if (!MpChatPerformanceGate.ShouldBlockAvatarHeavyWork &&
-                MpChatLobbyDiagnostics.LobbyHierarchyLooksLikeMultiplayerLobby())
+            TryStartLobbySessionBootstrap();
+
+            if (MpChatLobbyDiagnostics.AnyGameCoreLoaded())
+            {
+                MpChatLobbyCustomAvatarDriverRegistry.WakePendingArenaLoads();
+            }
+            else if (!MpChatPerformanceGate.ShouldBlockAvatarHeavyWork &&
+                     MpChatLobbyDiagnostics.LobbyHierarchyLooksLikeMultiplayerLobby())
             {
                 PollDeferredAvatarUpdates();
                 PollJoinRetries();
-                MpCustomAvatarLobbyTransferManager.PollDeferredCacheWrites();
-                MpCustomAvatarLobbyTransferManager.PollDeferredOutbound();
+                MpCustomAvatarLobbyTransferManager.PollDeferredCacheWrites(maxWrites: 1);
+                MpCustomAvatarLobbyTransferManager.PollDeferredOutbound(maxJobs: 1);
             }
         }
     }
 
-    private void ClearBroadcastDedupeState()
-    {
-        _lastSentDescriptor = null;
-        _lastSentScale = 1f;
-        _lastSendRealtime = 0f;
-    }
-
-    private void TryBroadcastMetadata(bool applySavedEyeHeight = true, bool forceSend = false)
+    private void SendLocalMetadata(string? targetUserId, bool includeDescriptor, bool includeScale)
     {
         if (!MpChatFeatures.LobbyCustomAvatars)
             return;
         if (!ModSettings.EnableLobbyCustomAvatars)
             return;
-
-        if (!forceSend && MpChatPerformanceGate.ShouldBlockAvatarHeavyWork)
+        if (!ReferenceEquals(ResolveActiveSendHost(), this))
             return;
 
-        if (!forceSend && MpChatPerformanceGate.IsMultiplayerSceneTransitionLikely())
-            return;
-
-        // Arena/GameCore: metadata is learned in lobby; no periodic relay while in song or between rounds.
-        if (!forceSend &&
-            MpChatLobbyDiagnostics.AnyGameCoreLoaded() &&
-            !MpChatLobbyDiagnostics.LobbyHierarchyLooksLikeMultiplayerLobby())
-            return;
-
-        if (!ReferenceEquals(Instance, this))
-            return;
-
-        if (applySavedEyeHeight)
-            MpCustomAvatarHeightCalibration.ApplySavedPresetIfAny();
-
-        var local = _sessionManager.localPlayer;
+        var session = ResolveSessionManager();
+        var local = session?.localPlayer;
         if (local == null || string.IsNullOrEmpty(local.userId))
+        {
+            MultiplayerChat.Plugin.Log?.Warn("[MPChat][LobbyAvatar] Metadata send skipped: no local player in session");
             return;
+        }
 
-        var descriptor = ModSettings.LobbyCustomAvatarContentHash.Trim().ToUpperInvariant();
-        if (!CustomAvatarHashUtil.LooksLikeMd5Hex(descriptor))
-            return;
-        if (descriptor.Length > MpCustomAvatarPosePacket.MaxDescriptorChars)
-            descriptor = descriptor.Substring(0, MpCustomAvatarPosePacket.MaxDescriptorChars);
+        string? descriptor = null;
+        if (includeDescriptor)
+        {
+            descriptor = ModSettings.LobbyCustomAvatarContentHash.Trim().ToUpperInvariant();
+            if (!CustomAvatarHashUtil.LooksLikeMd5Hex(descriptor))
+            {
+                MultiplayerChat.Plugin.Log?.Warn("[MPChat][LobbyAvatar] Metadata send skipped: invalid avatar hash");
+                return;
+            }
+            if (descriptor.Length > MpCustomAvatarPosePacket.MaxDescriptorChars)
+                descriptor = descriptor.Substring(0, MpCustomAvatarPosePacket.MaxDescriptorChars);
+        }
 
         var scale = 1f;
-        if (!MpCustomAvatarScaleSource.TryGetLocalAvatarScale(out scale))
+        if (includeScale && !MpCustomAvatarScaleSource.TryGetLocalAvatarScale(out scale))
             scale = 1f;
 
-        var now = Time.realtimeSinceStartup;
-        var needsKeepalive =
-            !string.IsNullOrEmpty(descriptor) &&
-            now - _lastSendRealtime >= MetadataKeepaliveSeconds;
+        byte flags = 0;
+        if (includeDescriptor && !string.IsNullOrEmpty(descriptor))
+            flags |= MpCustomAvatarPosePacket.FlagHasDescriptor;
+        if (includeScale)
+            flags |= MpCustomAvatarPosePacket.FlagHasScale;
 
-        if (!forceSend &&
-            !needsKeepalive &&
-            string.Equals(descriptor, _lastSentDescriptor, StringComparison.OrdinalIgnoreCase) &&
-            Mathf.Abs(scale - _lastSentScale) <= ScaleEpsilon)
+        if (flags == 0)
             return;
 
-        byte flags = 0;
-        if (!string.IsNullOrEmpty(descriptor))
-            flags |= MpCustomAvatarPosePacket.FlagHasDescriptor;
-        flags |= MpCustomAvatarPosePacket.FlagHasScale;
-
         _outboundPacket.Flags = flags;
-        _outboundPacket.AvatarDescriptorId = string.IsNullOrEmpty(descriptor) ? null : descriptor;
+        _outboundPacket.AvatarDescriptorId = includeDescriptor ? descriptor : null;
         _outboundPacket.AvatarScale = scale;
         _outboundPacket.FbtBlob = null;
+        _outboundPacket.TargetUserId = string.IsNullOrEmpty(targetUserId) ? null : targetUserId;
 
         try
         {
-            _sessionManager.Send(_outboundPacket);
+            session?.Send(_outboundPacket);
+            MultiplayerChat.Plugin.Log?.Info(
+                $"[MPChat][LobbyAvatar] Sent avatar metadata to {(string.IsNullOrEmpty(targetUserId) ? "session" : targetUserId)} hash={descriptor ?? "(scale only)"}");
         }
         catch (Exception ex)
         {
             MultiplayerChat.Plugin.Log?.Warn($"[MPChat][LobbyAvatar] Send failed: {ex.Message}");
-            return;
         }
-
-        _lastSentDescriptor = descriptor;
-        _lastSentScale = scale;
-        _lastSendRealtime = now;
-    }
-
-    private void TryBroadcastScaleOnly()
-    {
-        if (!MpChatFeatures.LobbyCustomAvatars)
-            return;
-        if (!ModSettings.EnableLobbyCustomAvatars)
-            return;
-        if (!ReferenceEquals(Instance, this))
-            return;
-
-        var local = _sessionManager.localPlayer;
-        if (local == null || string.IsNullOrEmpty(local.userId))
-            return;
-
-        var scale = 1f;
-        if (!MpCustomAvatarScaleSource.TryGetLocalAvatarScale(out scale))
-            scale = 1f;
-
-        if (Mathf.Abs(scale - _lastSentScale) <= ScaleEpsilon)
-            return;
-
-        _outboundPacket.Flags = MpCustomAvatarPosePacket.FlagHasScale;
-        _outboundPacket.AvatarDescriptorId = null;
-        _outboundPacket.AvatarScale = scale;
-        _outboundPacket.FbtBlob = null;
-
-        try
+        finally
         {
-            _sessionManager.Send(_outboundPacket);
+            _outboundPacket.TargetUserId = null;
         }
-        catch (Exception ex)
-        {
-            MultiplayerChat.Plugin.Log?.Warn($"[MPChat][LobbyAvatar] Scale send failed: {ex.Message}");
-            return;
-        }
-
-        _lastSentScale = scale;
-        _lastSendRealtime = Time.realtimeSinceStartup;
     }
 }
 

@@ -28,8 +28,15 @@ internal static class MpChatLobbyCustomAvatarDriverRegistry
     // Pedestals often appear after playerConnected; retry join work once the driver exists.
     private static void OnRemoteLobbyPedestalRegistered(MpChatLobbyCustomAvatarDriver driver)
     {
-        if (!driver.isActiveAndEnabled || driver.IsArenaContextForRegistry())
+        if (!driver.isActiveAndEnabled)
             return;
+
+        if (driver.IsArenaContextForRegistry())
+        {
+            driver.KickArenaFromRemoteSync();
+            return;
+        }
+
         if (driver.IsMirrorPedestalForRegistry())
             return;
 
@@ -123,6 +130,18 @@ internal static class MpChatLobbyCustomAvatarDriverRegistry
                 continue;
 
             into.Add(driver);
+        }
+    }
+
+    internal static void WakePendingArenaLoads()
+    {
+        for (var i = 0; i < AllDrivers.Count; i++)
+        {
+            var driver = AllDrivers[i];
+            if (driver == null || !driver.isActiveAndEnabled || !driver.IsArenaContextForRegistry())
+                continue;
+
+            driver.TryResumePendingLoad();
         }
     }
 

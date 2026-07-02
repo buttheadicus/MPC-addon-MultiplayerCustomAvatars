@@ -58,6 +58,7 @@ internal static class MpChatArenaAvatarAttach
         MpChatArenaDependencyResolver.TryFill(driver, facadeRoot);
         driver.TryBeginStartup();
         driver.PromoteArenaAfterIntro();
+        driver.KickArenaFromRemoteSync();
     }
 
     internal static void TryAttachToPose(MultiplayerAvatarPoseController pose)

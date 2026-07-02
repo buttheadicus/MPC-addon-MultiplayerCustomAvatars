@@ -17,7 +17,6 @@ public sealed class CustomAvatarsAddon : IMpChatAddon, IMpChatLobbyAvatarHook, I
 {
     private IMpChatHost? _host;
     private object? _lifecycleHost;
-    private HarmonyLib.Harmony? _harmony;
     private readonly CustomAvatarsLobbyHook _lobbyHook = new();
 
     public string Id => AddonIds.CustomAvatars;
@@ -37,46 +36,79 @@ public sealed class CustomAvatarsAddon : IMpChatAddon, IMpChatLobbyAvatarHook, I
     public void OnLoad(IMpChatHost host)
     {
         _host = host;
+        host.RegisterSettingsPage(this);
+        host.RegisterSettingsPresenter(
+            Id,
+            typeof(MultiplayerChat.UI.CustomAvatarsSettingsFlowCoordinator),
+            "Custom Avatars");
+
         if (!CustomAvatarDependenciesBootstrap.SessionDependenciesReady)
         {
             host.LogWarn("[MPChat][Addons] customAvatars: dependencies not ready.");
             return;
         }
 
-        _harmony = new HarmonyLib.Harmony($"com.multiplayerchat.addon.{Id}");
-        MpChatMultiplayerLobbyScaleAnimatorPatches.Apply(_harmony);
-        MpChatArenaAvatarHarmony.Apply(_harmony);
-
-        _lifecycleHost = host.CreatePersistentHost("MPChatLobbyAvatarLifecycleHost");
-        if (_lifecycleHost is GameObject lifecycleGo)
+        try
         {
-            var lifecycle = lifecycleGo.AddComponent<MpChatLobbyAvatarLifecycleHost>();
-            host.Inject(lifecycle);
+            var harmony = host.GetAddonHarmony() as HarmonyLib.Harmony;
+            if (harmony != null)
+            {
+                MpChatMultiplayerLobbyScaleAnimatorPatches.Apply(harmony);
+                MpChatArenaAvatarHarmony.Apply(harmony);
+            }
+        }
+        catch (Exception ex)
+        {
+            host.LogWarn($"[MPChat][Addons] customAvatars harmony apply failed: {ex.Message}");
         }
 
-        var syncGo = host.CreatePersistentHost("MPChatCustomAvatarSyncHost");
-        if (syncGo is GameObject syncHost)
+        try
         {
-            var sync = syncHost.AddComponent<MpCustomAvatarSyncManager>();
-            host.Inject(sync);
+            _lifecycleHost = host.CreatePersistentHost("MPChatLobbyAvatarLifecycleHost");
+            if (_lifecycleHost is GameObject lifecycleGo && lifecycleGo)
+                lifecycleGo.AddComponent<MpChatLobbyAvatarLifecycleHost>();
+        }
+        catch (Exception ex)
+        {
+            host.LogWarn($"[MPChat][Addons] customAvatars lifecycle host failed: {ex.Message}");
         }
 
-        var transferGo = host.CreatePersistentHost("MPChatCustomAvatarTransferHost");
-        if (transferGo is GameObject transferHost)
+        try
         {
-            var transfer = transferHost.AddComponent<MpCustomAvatarLobbyTransferManager>();
-            host.Inject(transfer);
+            var syncGo = host.CreatePersistentHost("MPChatCustomAvatarSyncHost");
+            if (syncGo is GameObject syncHost && syncHost)
+            {
+                var sync = syncHost.AddComponent<MpCustomAvatarSyncManager>();
+                host.Inject(sync);
+                sync.EnsureInitialized();
+            }
+        }
+        catch (Exception ex)
+        {
+            host.LogWarn($"[MPChat][Addons] customAvatars sync host failed: {ex.Message}");
+        }
+
+        try
+        {
+            var transferGo = host.CreatePersistentHost("MPChatCustomAvatarTransferHost");
+            if (transferGo is GameObject transferHost && transferHost)
+            {
+                var transfer = transferHost.AddComponent<MpCustomAvatarLobbyTransferManager>();
+                host.Inject(transfer);
+                transfer.EnsureInitialized();
+            }
+        }
+        catch (Exception ex)
+        {
+            host.LogWarn($"[MPChat][Addons] customAvatars transfer host failed: {ex.Message}");
         }
 
         host.RegisterLobbyAvatarHook(_lobbyHook);
-        host.RegisterSettingsPage(this);
-        host.RegisterSettingsPresenter(
-            Id,
-            typeof(MultiplayerChat.UI.CustomAvatarsSettingsFlowCoordinator),
-            "Custom Avatars");
         host.RegisterPacketCallback<MpCustomAvatarPosePacket>(OnPosePacket);
         host.RegisterPacketCallback<MpCustomAvatarFileRequestPacket>(OnFileRequestPacket);
         host.RegisterPacketCallback<MpCustomAvatarFileChunkPacket>(OnFileChunkPacket);
+
+        MpChatAddonPacketBridge.ReattachCallbacks();
 
         AddonCustomAvatarsBridge.SetHandlers(
             MpCustomAvatarSyncManager.FlushLobbyCustomAvatarsOnServerLeaveIfDisconnected,
@@ -92,7 +124,7 @@ public sealed class CustomAvatarsAddon : IMpChatAddon, IMpChatLobbyAvatarHook, I
         AddonGameplayBridge.SetArenaAttachHandler(MpChatArenaAvatarAttach.RefreshAttachForGameplay);
 
         host.SetCapability(AddonCapability.LobbyCustomAvatars, true);
-        ModPresenceManager.Instance?.RefreshLocalAddonCapabilities(AddonCapability.LobbyCustomAvatars);
+        ModPresenceManager.Instance?.RefreshLobbyCustomAvatarsPresenceAfterSettingsChange();
     }
 
     public void OnUnload()
@@ -109,20 +141,10 @@ public sealed class CustomAvatarsAddon : IMpChatAddon, IMpChatLobbyAvatarHook, I
             _host?.DestroyPersistentHost(_lifecycleHost);
         _host?.DestroyPersistentHost("MPChatCustomAvatarSyncHost");
         _host?.DestroyPersistentHost("MPChatCustomAvatarTransferHost");
-
-        try
-        {
-            _harmony?.UnpatchSelf();
-        }
-        catch
-        {
-            // ignored
-        }
-
-        _harmony = null;
+        _host?.UnpatchHarmony(Id);
         _lifecycleHost = null;
         _host = null;
-        ModPresenceManager.Instance?.RefreshLocalAddonCapabilities(AddonCapability.None);
+        ModPresenceManager.Instance?.RefreshLobbyCustomAvatarsPresenceAfterSettingsChange();
     }
 
     void IMpChatLobbyAvatarHook.DecorateLobbyAvatar(object lobbyAvatarController) =>
@@ -135,6 +157,9 @@ public sealed class CustomAvatarsAddon : IMpChatAddon, IMpChatLobbyAvatarHook, I
     {
         if (sender is not IConnectedPlayer player || string.IsNullOrEmpty(player.userId))
             return;
+        if (!MpCustomAvatarSyncManager.ShouldAcceptPosePacket(packet))
+            return;
+
         MpCustomAvatarSyncManager.ApplyReceived(player.userId, packet);
     }
 

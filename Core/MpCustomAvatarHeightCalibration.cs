@@ -188,7 +188,6 @@ internal static class MpCustomAvatarHeightCalibration
     internal static void RefreshLocalLobbyAvatar()
     {
         MpCustomAvatarScaleSource.InvalidateCachedManager();
-        MpCustomAvatarSyncManager.InvalidateOutboundDedupe();
         MpCustomAvatarSyncManager.BroadcastScaleThenMetadata();
         MpChatLobbyCustomAvatarDriver.ApplyLocalScaleToMirrorPedestals();
         MpChatLobbyCustomAvatarDriver.NotifyLocalAvatarSettingsChanged();

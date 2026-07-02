@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "uyekNjlUPjQ=",
+  "success": true,
+  "projectFilePath": "c:\\Users\\goria\\MPC-addon-MultiplayerCustomAvatars\\MultiplayerChat.Addon.CustomAvatars.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\goria\\.nuget\\packages\\bepinex.assemblypublicizer.msbuild\\0.4.1\\bepinex.assemblypublicizer.msbuild.0.4.1.nupkg.sha512"
+  ],
+  "logs": []
+}

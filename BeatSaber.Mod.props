@@ -1,0 +1,33 @@
+<Project>
+  <PropertyGroup>
+    <BeatSaberDir Condition="'$(BeatSaberDir)' == ''">D:\bsmanager\BSManager\BSInstances\MPCHAT developm</BeatSaberDir>
+    <LangVersion>latest</LangVersion>
+    <TargetFramework>net472</TargetFramework>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Nullable>enable</Nullable>
+    <NoWarn>CS0618;CS1591;CS0649;CS0436</NoWarn>
+    <CustomAvatarHintPath Condition="Exists('$(BeatSaberDir)\Plugins\CustomAvatar.dll')">$(BeatSaberDir)\Plugins\CustomAvatar.dll</CustomAvatarHintPath>
+    <CustomAvatarHintPath Condition="'$(CustomAvatarHintPath)' == '' and Exists('$(BeatSaberDir)\Plugins\CustomAvatars.dll')">$(BeatSaberDir)\Plugins\CustomAvatars.dll</CustomAvatarHintPath>
+    <CustomAvatarHintPath Condition="'$(CustomAvatarHintPath)' == ''">$(BeatSaberDir)\Plugins\CustomAvatar.dll</CustomAvatarHintPath>
+    <MpChatCoreRepoDir Condition="'$(MpChatCoreRepoDir)' == ''">$(MSBuildThisFileDirectory)..\BeatSaber-Multiplayer-Chat</MpChatCoreRepoDir>
+    <CoreDllPath>$(MpChatCoreRepoDir)\bin\$(Configuration)\MultiplayerChat.dll</CoreDllPath>
+    <ContractsDllPath>$(MpChatCoreRepoDir)\Contracts\MultiplayerChat.Contracts\bin\$(Configuration)\MultiplayerChat.Contracts.dll</ContractsDllPath>
+    <AddonRepoReleaseDir>$(MSBuildThisFileDirectory)releases\Plugins\MultiplayerChat\Addons</AddonRepoReleaseDir>
+    <AddonsBeatSaberDir>$(BeatSaberDir)\Plugins\MultiplayerChat\Addons</AddonsBeatSaberDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)AddonGlobalUsings.cs" Link="AddonGlobalUsings.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" />
+  </ItemGroup>
+  <Import Project="$(MSBuildThisFileDirectory)BeatSaber.Mod.References.props" />
+  <Target Name="CopyAddonRelease" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' and '$(AddonRepoReleaseDir)' != '' and '$(AddonManifestFile)' != ''">
+    <MakeDir Directories="$(AddonRepoReleaseDir)" />
+    <MakeDir Directories="$(AddonsBeatSaberDir)" Condition="Exists('$(BeatSaberDir)')" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(AddonRepoReleaseDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(AddonsBeatSaberDir)" SkipUnchangedFiles="true" Condition="Exists('$(BeatSaberDir)')" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\$(AddonManifestFile)" DestinationFiles="$(AddonRepoReleaseDir)\$(AssemblyName).addon.json" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\$(AddonManifestFile)" DestinationFiles="$(AddonsBeatSaberDir)\$(AssemblyName).addon.json" SkipUnchangedFiles="true" Condition="Exists('$(BeatSaberDir)')" />
+  </Target>
+</Project>

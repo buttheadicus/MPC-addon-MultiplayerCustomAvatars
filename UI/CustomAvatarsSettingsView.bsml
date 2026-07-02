@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<bg xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="https://monkeymanboy.github.io/BSML-Docs/BSMLSchema.xsd">
+  <vertical id="CustomAvatarsRoot" pad="8" spacing="4" child-align="MiddleCenter" horizontal-fit="PreferredSize">
+    <vertical id="EnableToggleGroup" spacing="2" child-align="MiddleCenter" horizontal-fit="PreferredSize">
+      <toggle-setting id="EnableLobbyAvatarsToggle" value="EnableLobbyAvatarsDraft" horizontal-fit="PreferredSize"/>
+    </vertical>
+    <horizontal id="ApplyRow" spacing="3" child-align="MiddleCenter" horizontal-fit="PreferredSize">
+      <button id="ApplyButton" text="Apply" pad="2" on-click="ApplyClicked"/>
+      <button id="CalibrateHeightButton" text="Calibrate Height" pad="2" on-click="CalibrateHeightClicked"/>
+    </horizontal>
+    <vertical id="ControlsSection" spacing="2" child-align="MiddleCenter" horizontal-fit="PreferredSize">
+      <dropdown-list-setting id="AvatarDropdown" text="Avatar" value="SelectedAvatar" options="AvatarOptions" horizontal-fit="PreferredSize"/>
+    </vertical>
+    <text id="DescriptionText" text="Simple to use! Tap your wanted avatar from the dropdown menu then tap apply, or calibrate height! This addon is designated for future enhancements, not finished yet." font-size="3.5" align="Center" enable-word-wrapping="true"/>
+  </vertical>
+</bg>

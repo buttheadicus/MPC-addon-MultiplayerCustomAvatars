@@ -36,7 +36,9 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     private const float JoinRetryPollIntervalSeconds = 0.75f;
 
-    private const float MaintenanceIntervalSeconds = 0.35f;
+    private const float LobbyMaintenanceIntervalSeconds = 0.5f;
+
+    private const float GameCoreMaintenanceIntervalSeconds = 2.5f;
 
     private static float _lastJoinRetryPollRealtime;
 
@@ -45,9 +47,6 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
     [Inject(Optional = true)] private readonly IMultiplayerSessionManager? _sessionManager;
 
     private Coroutine? _maintenanceRoutine;
-
-    private static readonly WaitForSeconds MaintenanceWait =
-        new WaitForSeconds(MaintenanceIntervalSeconds);
 
     private readonly MpCustomAvatarPosePacket _outboundPacket = new();
 
@@ -322,13 +321,10 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
             if (MpChatLobbyDiagnostics.AnyGameCoreLoaded())
             {
-                if (MpChatLobbyDiagnostics.ResultsLikeUiVisible())
-                    MpChatResultsPedestalAttach.ScanResultsPedestals(force: true);
-                else
-                    MpChatLobbyCustomAvatarDriverRegistry.ForUser(
-                        userId,
-                        driver => driver.KickFromRemoteSync(),
-                        lobbyPedestalsOnly: false);
+                MpChatLobbyCustomAvatarDriverRegistry.ForUser(
+                    userId,
+                    driver => driver.KickArenaFromRemoteSync(),
+                    lobbyPedestalsOnly: false);
             }
             else if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork ||
                      MpChatPerformanceGate.ShouldDeferIncomingAvatarData)
@@ -728,19 +724,19 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
     {
         while (true)
         {
-            yield return MaintenanceWait;
+            var inGameCore = MpChatLobbyDiagnostics.AnyGameCoreLoaded();
+            yield return new WaitForSeconds(
+                inGameCore ? GameCoreMaintenanceIntervalSeconds : LobbyMaintenanceIntervalSeconds);
+
             var session = ResolveSessionManager();
             if (!MpChatLobbyDiagnostics.MultiplayerAvatarSyncContextActive(session))
                 continue;
 
             TryStartLobbySessionBootstrap();
 
-            if (MpChatLobbyDiagnostics.AnyGameCoreLoaded())
+            if (inGameCore)
             {
-                if (MpChatLobbyDiagnostics.ResultsLikeUiVisible())
-                    MpChatResultsPedestalAttach.ScanResultsPedestals();
-                else
-                    MpChatLobbyCustomAvatarDriverRegistry.WakePendingArenaLoads();
+                MpChatLobbyCustomAvatarDriverRegistry.WakePendingArenaLoads();
             }
             else if (!MpChatPerformanceGate.ShouldBlockAvatarHeavyWork &&
                      MpChatLobbyDiagnostics.LobbyHierarchyLooksLikeMultiplayerLobby())

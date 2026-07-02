@@ -184,12 +184,12 @@ internal static class MpChatLobbyCustomAvatarDriverRegistry
     {
         var n = ActiveLobbyPedestalDriverCount();
         if (n <= 3)
-            return 0.25f;
-        if (n <= 6)
             return 0.5f;
+        if (n <= 6)
+            return 0.75f;
         if (n <= 10)
-            return 0.85f;
-        return 1.25f;
+            return 1.0f;
+        return 1.5f;
     }
 
     internal static float GetLobbySpawnRetryIntervalSeconds()

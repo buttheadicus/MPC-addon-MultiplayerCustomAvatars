@@ -11,6 +11,9 @@ internal static class MpChatArenaTiming
 
     private static float _lastArenaSpawnAttemptRealtime = -999f;
 
+    private static AudioTimeSyncController? _cachedAtsc;
+    private static int _cachedAtscSceneHandle = int.MinValue;
+
     internal static bool ShouldDeferArenaAvatarSpawn()
     {
         if (!MpChatLobbyDiagnostics.AnyGameCoreLoaded())
@@ -30,12 +33,24 @@ internal static class MpChatArenaTiming
     {
         try
         {
-            var atsc = Object.FindObjectOfType<AudioTimeSyncController>();
+            var atsc = ResolveAudioTimeSyncController();
             return atsc != null && atsc.isActiveAndEnabled && atsc.songTime > SongIntroEndSeconds;
         }
         catch
         {
             return false;
         }
+    }
+
+    private static AudioTimeSyncController? ResolveAudioTimeSyncController()
+    {
+        var sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+        if (_cachedAtsc == null || _cachedAtscSceneHandle != sceneHandle)
+        {
+            _cachedAtscSceneHandle = sceneHandle;
+            _cachedAtsc = Object.FindObjectOfType<AudioTimeSyncController>();
+        }
+
+        return _cachedAtsc;
     }
 }

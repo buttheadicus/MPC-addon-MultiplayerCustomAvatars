@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MultiplayerChat.Addon.CustomAvatars")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0573a1ee1d9af993428853acf66db90424d5cdb0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2b3fd0187ec7bd3c6e9bd4741f3c2777410ef600")]
 [assembly: System.Reflection.AssemblyProductAttribute("MultiplayerChat.Addon.CustomAvatars")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MultiplayerChat.Addon.CustomAvatars")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

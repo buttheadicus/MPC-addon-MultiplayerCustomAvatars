@@ -101,6 +101,38 @@ internal static class MpChatLobbyPedestalVisual
         }
     }
 
+    // Cheap check before full hierarchy walks during periodic arena maintain.
+    internal static bool ArenaVanillaRigMayNeedSuppress(Transform facadeRoot, Transform? customSpawnRoot)
+    {
+        if (facadeRoot == null)
+            return false;
+
+        foreach (var visual in facadeRoot.GetComponentsInChildren<BeatAvatarVisualController>(true))
+        {
+            if (visual != null && visual.enabled)
+                return true;
+        }
+
+        foreach (var avatar in facadeRoot.GetComponentsInChildren<Avatar>(true))
+        {
+            if (avatar == null || !avatar.enabled)
+                continue;
+
+            foreach (var renderer in avatar.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null || !renderer.enabled)
+                    continue;
+                if (IsUnderCustomSpawn(renderer.transform, customSpawnRoot))
+                    continue;
+                if (ShouldSkipPedestalRenderer(renderer.transform))
+                    continue;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static bool IsUnderCustomSpawn(Transform rendererTransform, Transform? customSpawnRoot)
     {
         if (customSpawnRoot == null)

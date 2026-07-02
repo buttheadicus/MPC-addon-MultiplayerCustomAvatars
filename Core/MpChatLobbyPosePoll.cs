@@ -59,9 +59,9 @@ internal static class MpChatLobbyPosePoll
     {
         var n = ActiveInputs.Count;
         if (n <= 4)
-            return 0.05f;
-        if (n <= 8)
             return 0.08f;
-        return 0.12f;
+        if (n <= 8)
+            return 0.12f;
+        return 0.16f;
     }
 }

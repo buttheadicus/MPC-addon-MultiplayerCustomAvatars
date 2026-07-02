@@ -62,8 +62,6 @@ public sealed class MpCustomAvatarLobbyTransferManager : MonoBehaviour, IInitial
 
     private byte[] _chunkScratch = Array.Empty<byte>();
 
-    private Coroutine? _deferredPollRoutine;
-
     private Coroutine? _gradualFlushRoutine;
 
     private bool _started;
@@ -78,7 +76,6 @@ public sealed class MpCustomAvatarLobbyTransferManager : MonoBehaviour, IInitial
         _started = true;
         _lobbyScopeTransferManager = this;
         Instance = this;
-        _deferredPollRoutine = StartCoroutine(PollDeferredTransferWorkRoutine());
     }
 
     private IMultiplayerSessionManager? ResolveSessionManager() =>
@@ -86,12 +83,6 @@ public sealed class MpCustomAvatarLobbyTransferManager : MonoBehaviour, IInitial
 
     private void OnDestroy()
     {
-        if (_deferredPollRoutine != null)
-        {
-            StopCoroutine(_deferredPollRoutine);
-            _deferredPollRoutine = null;
-        }
-
         if (_gradualFlushRoutine != null)
         {
             StopCoroutine(_gradualFlushRoutine);
@@ -232,23 +223,6 @@ public sealed class MpCustomAvatarLobbyTransferManager : MonoBehaviour, IInitial
             MpCustomAvatarSyncManager.RequestMissingRemoteAvatarFiles();
 
         _gradualFlushRoutine = null;
-    }
-
-    private static IEnumerator PollDeferredTransferWorkRoutine()
-    {
-        var wait = new WaitForSeconds(0.2f);
-        while (true)
-        {
-            yield return wait;
-            if (!MpChatFeatures.LobbyCustomAvatars || !ModSettings.EnableLobbyCustomAvatars)
-                continue;
-
-            if (!CanRunLobbyAvatarFileWork())
-                continue;
-
-            PollDeferredCacheWrites(maxWrites: 1);
-            PollDeferredOutbound(maxJobs: 1);
-        }
     }
 
     public static void RequestLobbyAvatarFile(string md5HexUpper, string ownerUserId)

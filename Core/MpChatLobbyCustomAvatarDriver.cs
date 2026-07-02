@@ -48,7 +48,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
 
     private const float ArenaMaintainIntervalSeconds = 0.75f;
 
-    private const float ArenaGameplayMaintainIntervalSeconds = 3f;
+    private const float ArenaGameplayMaintainIntervalSeconds = 8f;
 
     private float _nextLobbyVisualMaintainRealtime;
 
@@ -69,15 +69,6 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
     internal string RegistryUserId => _connectedPlayer?.userId ?? "";
 
     internal bool IsArenaContextForRegistry() => IsArenaContext();
-
-    internal bool IsResultsPedestalContext()
-    {
-        if (!string.Equals(gameObject.scene.name, "GameCore", StringComparison.Ordinal))
-            return false;
-
-        return GetComponent<MultiplayerLobbyAvatarController>() != null ||
-               GetComponentInParent<MultiplayerLobbyAvatarController>() != null;
-    }
 
     internal bool IsMirrorPedestalForRegistry() => IsMirrorPedestal();
 
@@ -447,8 +438,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
     }
 
     private bool IsArenaContext() =>
-        string.Equals(gameObject.scene.name, "GameCore", StringComparison.Ordinal) &&
-        !IsResultsPedestalContext();
+        string.Equals(gameObject.scene.name, "GameCore", StringComparison.Ordinal);
 
     private Transform? GetFacadeRoot() =>
         MpChatArenaFacadeRoots.FindFrom(_poseController != null ? _poseController.transform : transform);
@@ -714,11 +704,9 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         BeginLoadForHash(hash, Mathf.Clamp(scale, 0.25f, 4f), bypassPedestalDefer);
     }
 
-    internal void KickArenaFromRemoteSync() => KickFromRemoteSync();
-
-    internal void KickFromRemoteSync()
+    internal void KickArenaFromRemoteSync()
     {
-        if (!IsArenaContext() && !IsResultsPedestalContext())
+        if (!IsArenaContext())
             return;
 
         TryBeginStartup();
@@ -733,10 +721,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         if (MpChatPerformanceGate.ShouldBlockAvatarHeavyWorkForDriver(IsArenaContext()))
             return;
 
-        if (!IsArenaContext() &&
-            !IsResultsPedestalContext() &&
-            !bypassPedestalDefer &&
-            MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
+        if (!IsArenaContext() && !bypassPedestalDefer && MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
             return;
 
         if (!MpCustomAvatarSyncManager.TryGetRemoteState(_connectedPlayer.userId, out var row))
@@ -846,18 +831,13 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         if (IsArenaContext())
             MpChatArenaTiming.NotifyArenaSpawnAttempt();
 
-        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork &&
-            !IsArenaContext() &&
-            !IsResultsPedestalContext())
+        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork && !IsArenaContext())
             return;
 
         if (MpChatPerformanceGate.ShouldBlockAvatarHeavyWorkForDriver(IsArenaContext()))
             return;
 
-        if (!IsArenaContext() &&
-            !IsResultsPedestalContext() &&
-            !bypassPedestalDefer &&
-            MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
+        if (!IsArenaContext() && !bypassPedestalDefer && MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
             return;
 
         if (string.Equals(_lastSpawnedHash, hash, StringComparison.OrdinalIgnoreCase) &&
@@ -913,9 +893,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         if (IsArenaContext() && MpChatAvatarWorkloadGate.ShouldDeferArenaAvatarSpawn)
             return;
 
-        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork &&
-            !IsArenaContext() &&
-            !IsResultsPedestalContext())
+        if (MpChatAvatarWorkloadGate.ShouldDeferAvatarNetworkDiskAndSpawnWork && !IsArenaContext())
             return;
 
         if (MpChatPerformanceGate.ShouldBlockAvatarHeavyWorkForDriver(IsArenaContext()))
@@ -1061,7 +1039,8 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
                     {
                         MpChatLobbyPedestalVisual.EnsureSpawnedVisible(spawnedGo, _lastAppliedScale);
                     }
-                    else
+                    else if (MpChatLobbyPedestalVisual.ArenaVanillaRigMayNeedSuppress(
+                                 facadeRoot, spawnedGo.transform))
                     {
                         MpChatLobbyPedestalVisual.ReapplyArenaSpawnedVisibility(
                             _poseController.transform, facadeRoot, spawnedGo, _lastAppliedScale);
@@ -1097,7 +1076,6 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
 
         if (!IsArenaContext() &&
             !_loadBypassesPedestalDefer &&
-            !IsResultsPedestalContext() &&
             MpChatPerformanceGate.ShouldDeferLobbyPedestalAvatarRefresh)
         {
             EndLoadCoroutine();
@@ -1210,6 +1188,12 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         return true;
     }
 
+    private void StaggerNextMaintainRealtime(ref float nextRealtime, float intervalSeconds)
+    {
+        var jitter = (Mathf.Abs(GetInstanceID()) % 1000) * 0.001f;
+        nextRealtime = Time.realtimeSinceStartup + intervalSeconds + jitter;
+    }
+
     private void FinalizeSpawned(float scale)
     {
         if (_spawnedAvatar == null || _avatarInput == null)
@@ -1262,13 +1246,16 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
             }
 
             _finalizeComplete = true;
-            var context = IsResultsPedestalContext()
-                ? "results"
-                : IsArenaContext()
-                    ? "arena"
-                    : "pedestal";
+            var context = IsArenaContext() ? "arena" : "pedestal";
             MultiplayerChat.Plugin.Log?.Info(
                 $"[MPChat][LobbyAvatar] Showing custom avatar on {context} for {_connectedPlayer.userId} (hash {_lastSpawnedHash})");
+
+            if (IsArenaContext())
+                StaggerNextMaintainRealtime(ref _nextArenaMaintainRealtime, GetArenaMaintainIntervalSeconds());
+            else
+                StaggerNextMaintainRealtime(
+                    ref _nextLobbyVisualMaintainRealtime,
+                    MpChatLobbyCustomAvatarDriverRegistry.GetLobbyVisualMaintainIntervalSeconds());
         }
         catch (Exception ex)
         {

@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = MultiplayerChat.Addon.CustomAvatars
-build_property.ProjectDir = c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\
+build_property.ProjectDir = C:\Users\goria\MPC-addon-MultiplayerCustomAvatars\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false

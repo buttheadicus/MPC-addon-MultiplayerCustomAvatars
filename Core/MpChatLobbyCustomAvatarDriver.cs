@@ -41,6 +41,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
     private bool _finalizeComplete;
 
     private bool _loggedMissingArenaDeps;
+    private bool _loggedMissingLobbyDeps;
     private bool _handingOffSpawn;
     private bool _arenaIkEnabled;
 
@@ -212,7 +213,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         return !string.IsNullOrEmpty(localUserId);
     }
 
-    // Mirror pedestal previews your avatar; your own lobby/arena slot is for others to see on their client.
+    // mirror pedestal previews your avatar; your own lobby/arena slot is for others to see on their client.
     private bool SkipStartupAsLocalPlayerSlot() =>
         IsDisplayingLocalPlayer() && !IsMirrorPedestal();
 
@@ -241,6 +242,8 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
     {
         MpChatLobbyCustomAvatarDriverRegistry.ForMirrorDrivers(driver =>
             driver.ForceRefresh(forceRespawn: true, bypassPedestalDefer: true));
+        // mirrors are the local preview; also poke every lobby pedestal so Apply is not stuck until a process restart
+        RefreshAllLobbyAvatarDrivers(forceRespawn: false);
     }
 
     internal static void ApplyLocalScaleToMirrorPedestals()
@@ -497,6 +500,12 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
                 MultiplayerChat.Plugin.Log?.Warn(
                     $"[MPChat][LobbyAvatar] Arena driver waiting for Zenject deps on {gameObject.name}");
             }
+            else if (!IsArenaContext() && !_loggedMissingLobbyDeps)
+            {
+                _loggedMissingLobbyDeps = true;
+                MultiplayerChat.Plugin.Log?.Warn(
+                    $"[MPChat][LobbyAvatar] Lobby driver waiting for Zenject deps on {gameObject.name}");
+            }
 
             return;
         }
@@ -573,12 +582,15 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
                 MpChatArenaDependencyResolver.TryFill(this, facadeRoot);
         }
 
+        if (!DependenciesReady && !IsArenaContext())
+            MpChatArenaDependencyResolver.TryFillLobby(this);
+
         return DependenciesReady;
     }
 
     private void OnDisable()
     {
-        // Arena facade/pose toggles during intro; keep spawn and sync hooks until the facade is destroyed.
+        // arena facade/pose toggles during intro; keep spawn and sync hooks until the facade is destroyed.
         if (IsArenaContext())
         {
             if (_loadCoroutine != null)
@@ -727,10 +739,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
         if (!MpCustomAvatarSyncManager.TryGetRemoteState(_connectedPlayer.userId, out var row))
         {
             if (_spawnedAvatar == null && _loadCoroutine == null)
-            {
                 MpCustomAvatarSyncManager.ScheduleJoinRetry(_connectedPlayer.userId);
-                return;
-            }
 
             RestoreVanillaFallback();
             return;
@@ -944,6 +953,18 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (!IsArenaContext() && !DependenciesReady)
+        {
+            if (Time.realtimeSinceStartup >= _nextLobbySpawnRetryRealtime)
+            {
+                _nextLobbySpawnRetryRealtime = Time.realtimeSinceStartup + 0.35f;
+                TryBeginStartup();
+            }
+
+            if (!DependenciesReady)
+                return;
+        }
+
         if (IsArenaContext())
         {
             var facadeRoot = GetFacadeRoot();
@@ -1128,7 +1149,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
             yield break;
         }
 
-        // Let Custom Avatars finish activating hierarchy before we hide vanilla rig parts.
+        // let Custom Avatars finish activating hierarchy before we hide vanilla rig parts.
         yield return null;
 
         if (_spawnedAvatar == null)
@@ -1286,8 +1307,12 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
     private void RestoreVanillaFallback()
     {
         var userId = _connectedPlayer?.userId ?? gameObject.name;
-        MultiplayerChat.Plugin.Log?.Debug(
-            $"[MPChat][LobbyAvatar] Showing default Beat Saber rig for {userId}");
+        if (_spawnedAvatar != null)
+        {
+            MultiplayerChat.Plugin.Log?.Debug(
+                $"[MPChat][LobbyAvatar] Showing default Beat Saber rig for {userId}");
+        }
+
         _pendingHash = null;
         DestroySpawned();
         if (_poseController != null)

@@ -4,7 +4,7 @@ namespace MultiplayerChat.Core;
 
 internal static class MpChatAvatarWorkloadGate
 {
-    // Song, countdown, results, and GameCore handoff: no avatar file or spawn work.
+    // song, countdown, results, and GameCore handoff: no avatar file or spawn work. so its gated it here.
     internal static bool ShouldDeferAvatarNetworkDiskAndSpawnWork =>
         MpChatLobbyDiagnostics.AnyGameCoreLoaded() ||
         MpChatPerformanceGate.IsMultiplayerSceneTransitionLikely();

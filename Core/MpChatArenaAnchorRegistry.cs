@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace MultiplayerChat.Core;
 
-// Avoid FindObjectsOfType<Transform> when cleaning arena avatar anchors.
+// avoid FindObjectsOfType<Transform> when cleaning arena avatar anchors.
 internal static class MpChatArenaAnchorRegistry
 {
     private static readonly List<Transform> Anchors = new(8);

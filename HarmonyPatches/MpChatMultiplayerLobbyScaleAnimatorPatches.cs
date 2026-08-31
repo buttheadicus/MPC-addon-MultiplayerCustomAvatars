@@ -153,7 +153,8 @@ internal static class MpChatMultiplayerLobbyScaleAnimatorPatches
                 return;
             }
 
-            transform.localScale = Vector3.one * 0.05f;
+            // keep the stock BeatAvatar visible while we wait for (or skip) custom metadata.
+            transform.localScale = Vector3.one;
         }
     }
 }

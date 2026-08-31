@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace MultiplayerChat.Core;
 
-// Indexed lobby drivers so player join/disconnect never scans the whole scene.
+// indexed lobby drivers so player join/disconnect never scans the whole scene. (stupidly expsenive lmao)
 internal static class MpChatLobbyCustomAvatarDriverRegistry
 {
     private static readonly List<MpChatLobbyCustomAvatarDriver> AllDrivers = new(16);
@@ -25,7 +25,7 @@ internal static class MpChatLobbyCustomAvatarDriverRegistry
         OnRemoteLobbyPedestalRegistered(driver);
     }
 
-    // Pedestals often appear after playerConnected; retry join work once the driver exists.
+    // pedestals often appear after playerConnected; retry join work once the driver exists.
     private static void OnRemoteLobbyPedestalRegistered(MpChatLobbyCustomAvatarDriver driver)
     {
         if (!driver.isActiveAndEnabled)
@@ -114,7 +114,7 @@ internal static class MpChatLobbyCustomAvatarDriverRegistry
             if (driver == null || !driver.isActiveAndEnabled || driver.IsArenaContextForRegistry())
                 continue;
 
-            // Mirror preview last: only one concurrent lobby load slot; remotes must not stay pending behind mirror.
+            // mirror preview last: only one concurrent lobby load slot; remotes must not stay pending behind mirror.
             if (driver.IsMirrorPedestalForRegistry())
                 continue;
 

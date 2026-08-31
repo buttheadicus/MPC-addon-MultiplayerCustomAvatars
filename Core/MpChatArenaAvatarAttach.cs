@@ -36,7 +36,7 @@ internal static class MpChatArenaAvatarAttach
         if (facadeRoot == null || MpChatArenaFacadeRoots.IsRedecoratorShadow(facadeRoot))
             return;
 
-        // Local duel rig: other clients render your custom avatar on their connected-player facade.
+        // local duel rig: other clients render your custom avatar on their connected-player facade.
         if (facadeRoot.GetComponent<MultiplayerLocalActivePlayerFacade>() != null)
             return;
 

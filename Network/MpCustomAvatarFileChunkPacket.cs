@@ -17,7 +17,7 @@ public class MpCustomAvatarFileChunkPacket : MultiplayerCore.Networking.Abstract
 
     public string HashMd5Hex = "";
 
-    // Unicast to the requester; empty broadcasts (legacy v1).
+    // unicast to the requester; empty broadcasts (legacy v1).
     public string? TargetUserId;
 
     public ushort ChunkIndex;

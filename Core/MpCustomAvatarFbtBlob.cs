@@ -1,3 +1,4 @@
+// i have NO clue if this even works lmao, im NOT gonna test it lol-this is for you to figure out if it works or not, i dont care if it works or not, i just want to be able to use custom avatars in the lobby.7
 using System;
 using UnityEngine;
 

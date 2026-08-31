@@ -58,7 +58,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     public void Initialize() => EnsureInitialized();
 
-    // Persistent addon hosts are not Zenject-initialized; CustomAvatarsAddon calls this after Inject.
+    // persistent addon hosts are not Zenject-initialized; CustomAvatarsAddon calls this after Inject.
     public void EnsureInitialized()
     {
         if (_started)
@@ -92,7 +92,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
     private IMultiplayerSessionManager? ResolveSessionManager() =>
         MpChatAddonSessionResolver.Resolve(_sessionManager);
 
-    // Remote metadata is static across lobby + GameCore; hand Instance back after arena teardown.
+    // remote metadata is static across lobby + GameCore; hand Instance back after arena teardown.
     internal static void EnsureActiveLobbyHostAfterArena()
     {
         if (!MpChatLobbyDiagnostics.MultiplayerLobbyReturnContextActive())
@@ -110,7 +110,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     internal static void OnVoipPipelineReloaded()
     {
-        MpChatAddonPacketBridge.ReattachCallbacks();
+        MpChatAddonPacketBridge.ReattachCallbacks(force: true);
         EnsureActiveLobbyHostAfterArena();
         if (Instance != null && MpChatSceneScope.IsGameCoreHost(Instance)
             && !MpChatLobbyDiagnostics.AnyGameCoreLoaded() && _lobbyScopeSyncManager != null)
@@ -224,7 +224,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         if (!MpChatFeatures.LobbyCustomAvatars || !ModSettings.EnableLobbyCustomAvatars)
             return;
 
-        MpChatAddonPacketBridge.ReattachCallbacks();
+        MpChatAddonPacketBridge.ReattachCallbacks(force: true);
 
         var session = ResolveSessionManager();
         if (session?.localPlayer == null || string.IsNullOrEmpty(session.localPlayer.userId))
@@ -490,7 +490,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         MpChatLobbyAvatarLifecycleHost.QueuePlayerLeaveAvatarWork(userId);
     }
 
-    // Static remote rows survive lobby Zenject teardown; clear when the lobby session ends.
+    // static remote rows survive lobby Zenject teardown; clear when the lobby session ends.
     public static void ClearAllRemotes()
     {
         lock (RemoteLock)
@@ -515,7 +515,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         }
     }
 
-    // Full teardown when the multiplayer session is no longer connected.
+    // full teardown when the multiplayer session is no longer connected.
     public static void FlushLobbyCustomAvatarsOnServerLeaveIfDisconnected()
     {
         if (!MpChatFeatures.LobbyCustomAvatars)
@@ -610,7 +610,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
     public static void InvalidateOutboundDedupe()
     {
-        // Kept for settings callers; metadata is event-driven now (no outbound dedupe state).
+        // kept for settings callers; metadata is event-driven now (no outbound dedupe state).
     }
 
     internal static bool ShouldAcceptPosePacket(MpCustomAvatarPosePacket packet)
@@ -618,22 +618,24 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         if (string.IsNullOrEmpty(packet.TargetUserId))
             return true;
 
-        var local = Instance?.ResolveSessionManager()?.localPlayer;
-        return local != null &&
-               !string.IsNullOrEmpty(local.userId) &&
-               string.Equals(packet.TargetUserId, local.userId, StringComparison.Ordinal);
+        var localId = ChatManager.Instance?.LocalUserId;
+        if (string.IsNullOrEmpty(localId))
+            localId = Instance?.ResolveSessionManager()?.localPlayer?.userId;
+
+        return !string.IsNullOrEmpty(localId) &&
+               string.Equals(packet.TargetUserId, localId, StringComparison.Ordinal);
     }
 
-    // Tell everyone in the session which avatar we use (session join / avatar change / height calibrate).
+    // tell everyone in the session which avatar we use (session join / avatar change / height calibrate).
     public static void BroadcastLocalMetadataToAll()
     {
         ResolveActiveSendHost()?.SendLocalMetadata(targetUserId: null, includeDescriptor: true, includeScale: true);
     }
 
-    // Tell existing peers our avatar once after we join their session.
+    // tell existing peers our avatar once after we join their session.
     public static void BroadcastLocalMetadataToSession() => BroadcastLocalMetadataToAll();
 
-    // Tell one newly joined peer our avatar; they request the file if needed.
+    // tell one newly joined peer our avatar; they request the file if needed.
     public static void SendLocalMetadataToUser(string targetUserId)
     {
         if (string.IsNullOrEmpty(targetUserId))
@@ -642,7 +644,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
         ResolveActiveSendHost()?.SendLocalMetadata(targetUserId, includeDescriptor: true, includeScale: true);
     }
 
-    // Height calibrate: scale packet first so peers apply height before a full metadata/spawn refresh.
+    // height calibrate: scale packet first so peers apply height before a full metadata/spawn refresh.
     public static void BroadcastScaleThenMetadata()
     {
         var host = ResolveActiveSendHost();
@@ -728,6 +730,8 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
             yield return new WaitForSeconds(
                 inGameCore ? GameCoreMaintenanceIntervalSeconds : LobbyMaintenanceIntervalSeconds);
 
+            MpChatAddonPacketBridge.ReattachCallbacks();
+
             var session = ResolveSessionManager();
             if (!MpChatLobbyDiagnostics.MultiplayerAvatarSyncContextActive(session))
                 continue;
@@ -759,7 +763,13 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
             return;
 
         var session = ResolveSessionManager();
-        var local = session?.localPlayer;
+        if (session == null)
+        {
+            MultiplayerChat.Plugin.Log?.Warn("[MPChat][LobbyAvatar] Metadata send skipped: no session manager");
+            return;
+        }
+
+        var local = session.localPlayer;
         if (local == null || string.IsNullOrEmpty(local.userId))
         {
             MultiplayerChat.Plugin.Log?.Warn("[MPChat][LobbyAvatar] Metadata send skipped: no local player in session");
@@ -800,7 +810,7 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
         try
         {
-            session?.Send(_outboundPacket);
+            session.Send(_outboundPacket);
             MultiplayerChat.Plugin.Log?.Info(
                 $"[MPChat][LobbyAvatar] Sent avatar metadata to {(string.IsNullOrEmpty(targetUserId) ? "session" : targetUserId)} hash={descriptor ?? "(scale only)"}");
         }

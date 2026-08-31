@@ -7,7 +7,7 @@ using UnityEngine.SceneManagement;
 
 namespace MultiplayerChat.Core;
 
-// Refreshes lobby pedestal custom avatars after arena / GameCore transitions.
+// refreshes lobby pedestal custom avatars after arena / GameCore transitions.
 public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
 {
     public static MpChatLobbyAvatarLifecycleHost? Instance { get; private set; }
@@ -321,7 +321,7 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
         try
         {
             MpChatLobbyDiagnostics.InvalidateSceneHeuristicCaches();
-            MpChatAddonPacketBridge.ReattachCallbacks();
+            MpChatAddonPacketBridge.ReattachCallbacks(force: true);
             MpChatLobbyPosePoll.ClearAll();
 
             const float lobbyWaitTimeoutSeconds = 6f;
@@ -363,7 +363,7 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
     private static void RebootstrapConnectedLobbyAvatars()
     {
         MpCustomAvatarSyncManager.EnsureActiveLobbyHostAfterArena();
-        var session = UnityEngine.Object.FindObjectOfType<MultiplayerSessionManager>();
+        var session = MpChatAddonSessionResolver.Resolve(null);
         if (session?.connectedPlayers == null)
             return;
 
@@ -391,7 +391,7 @@ public sealed class MpChatLobbyAvatarLifecycleHost : MonoBehaviour
         if (!MpChatLobbyDiagnostics.LobbyHierarchyLooksLikeMultiplayerLobby())
             yield break;
 
-        var session = UnityEngine.Object.FindObjectOfType<MultiplayerSessionManager>();
+        var session = MpChatAddonSessionResolver.Resolve(null);
         if (session?.connectedPlayers == null)
             yield break;
 

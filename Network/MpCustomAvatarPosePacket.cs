@@ -25,7 +25,7 @@ public class MpCustomAvatarPosePacket : MultiplayerCore.Networking.Abstractions.
 
     public byte[]? FbtBlob;
 
-    // When set, only the targeted peer should apply this update for the sender.
+    // when set, only the targeted peer should apply this update for the sender.
     public string? TargetUserId;
 
     public override void Serialize(NetDataWriter writer)

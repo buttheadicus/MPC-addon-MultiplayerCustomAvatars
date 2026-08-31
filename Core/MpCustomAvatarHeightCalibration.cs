@@ -9,7 +9,7 @@ using Assembly = System.Reflection.Assembly;
 
 namespace MultiplayerChat.Core;
 
-// Match Custom Avatars "Measure player height": measure -> OnPlayerHeightChanged -> scale -> ResizeCurrentAvatar -> lobby sync.
+// match Custom Avatars "Measure player height": measure -> OnPlayerHeightChanged -> scale -> ResizeCurrentAvatar -> lobby sync. (im gonna fuse CA into this addon so i actually have control over it lol, this is basically jerry rigging it to work with custom avatars lmao)
 internal static class MpCustomAvatarHeightCalibration
 {
     private const float MinEyeHeightMeters = 0.8f;
@@ -167,7 +167,7 @@ internal static class MpCustomAvatarHeightCalibration
 
         if (TryMeasureViaGeneralSettingsHost(manager, rig, out var hostEye, out var hostSource))
         {
-            // Host measure runs CA's full resize chain; a second ApplyPlayerHeight pass skews scale (~half size on pedestals).
+            // host measure runs CA's full resize chain; a second ApplyPlayerHeight pass skews scale (~half size on pedestals).
             return TrySaveMeasuredHeight(hostEye, hostSource, manager, customAvatarsAlreadyResized: true);
         }
 

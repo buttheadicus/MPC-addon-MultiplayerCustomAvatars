@@ -78,7 +78,10 @@ public sealed class CustomAvatarsAddon : IMpChatAddon, IMpChatLobbyAvatarHook, I
             var syncGo = host.CreatePersistentHost("MPChatCustomAvatarSyncHost");
             if (syncGo is GameObject syncHost && syncHost)
             {
-                var sync = syncHost.AddComponent<MpCustomAvatarSyncManager>();
+                var sync = syncHost.GetComponent<MpCustomAvatarSyncManager>() ??
+                           syncHost.AddComponent<MpCustomAvatarSyncManager>();
+                if (sync == null)
+                    throw new InvalidOperationException("MpCustomAvatarSyncManager missing after AddComponent");
                 host.Inject(sync);
                 sync.EnsureInitialized();
             }
@@ -93,7 +96,10 @@ public sealed class CustomAvatarsAddon : IMpChatAddon, IMpChatLobbyAvatarHook, I
             var transferGo = host.CreatePersistentHost("MPChatCustomAvatarTransferHost");
             if (transferGo is GameObject transferHost && transferHost)
             {
-                var transfer = transferHost.AddComponent<MpCustomAvatarLobbyTransferManager>();
+                var transfer = transferHost.GetComponent<MpCustomAvatarLobbyTransferManager>() ??
+                               transferHost.AddComponent<MpCustomAvatarLobbyTransferManager>();
+                if (transfer == null)
+                    throw new InvalidOperationException("MpCustomAvatarLobbyTransferManager missing after AddComponent");
                 host.Inject(transfer);
                 transfer.EnsureInitialized();
             }

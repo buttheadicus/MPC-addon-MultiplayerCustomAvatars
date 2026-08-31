@@ -12,7 +12,7 @@ using Zenject;
 
 namespace MultiplayerChat.Core;
 
-// Lobby .avatar transfer: on-demand only, paced unicast when requested.
+// lobby .avatar transfer: on-demand only, paced unicast when requested.
 public sealed class MpCustomAvatarLobbyTransferManager : MonoBehaviour, IInitializable
 {
     public static MpCustomAvatarLobbyTransferManager? Instance { get; private set; }
@@ -21,10 +21,10 @@ public sealed class MpCustomAvatarLobbyTransferManager : MonoBehaviour, IInitial
 
     private const float RequestCooldownSeconds = 0.5f;
 
-    // Steady send rate for one-time lobby .avatar transfers (mebibytes per second).
+    // steady send rate for one-time lobby .avatar transfers (mebibytes per second). (hopefully we dont wreck the server with this lmao-cant garentee it wont wreck the server tho....)
     private const double UnicastBytesPerSecond = 512 * 1024;
 
-    // Cap synchronous chunk work per frame so Unity keeps responding.
+    // cap synchronous chunk work per frame so Unity keeps responding. (hopefully we dont wreck the server with this lmao-cant garentee it wont wreck the server tho....)
     private const int MaxUnicastChunksPerFrame = 1;
 
     private static readonly object Gate = new();
@@ -96,7 +96,7 @@ public sealed class MpCustomAvatarLobbyTransferManager : MonoBehaviour, IInitial
             Instance = null;
     }
 
-    // Stop arena/transition transfers; queued work runs on FlushDeferredLobbyAvatarFileTransfers unless discarded.
+    // stop arena/transition transfers; queued work runs on FlushDeferredLobbyAvatarFileTransfers unless discarded.
     public static void SuspendLobbyAvatarFileTransfer(bool discardInFlightSendQueue = false)
     {
         var host = _lobbyScopeTransferManager;
@@ -140,7 +140,7 @@ public sealed class MpCustomAvatarLobbyTransferManager : MonoBehaviour, IInitial
 
     private static bool CanRunLobbyAvatarFileWork() => MpChatAvatarWorkloadGate.CanRunLobbyAvatarFileWork;
 
-    // Spread deferred lobby downloads across many frames instead of one burst on arena return.
+    // spread deferred lobby downloads across many frames instead of one burst on arena return... i wanted it to be one frame, but i think youd know why that wont work...
     public static void ScheduleGradualLobbyReturnFlush()
     {
         var host = _lobbyScopeTransferManager;
@@ -272,7 +272,7 @@ public sealed class MpCustomAvatarLobbyTransferManager : MonoBehaviour, IInitial
         host.SendFileRequest(md5HexUpper, ownerUserId);
     }
 
-    // Disabled: proactive .avatar push on connect flooded BeatTogether relays.
+    // disabled: proactive .avatar push on connect flooded BeatTogether relays.
     public static void TryProactiveShareLocalAvatar(string targetUserId)
     {
         _ = targetUserId;

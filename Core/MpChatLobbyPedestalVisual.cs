@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MultiplayerChat.Core;
 
-// Vanilla lobby pedestals use ScaleAnimator (patched to ~0.05). Keep pedestal full scale while custom is shown.
+// vanilla lobby pedestals use ScaleAnimator (patched to ~0.05). keep pedestal full scale while custom is shown.
 internal static class MpChatLobbyPedestalVisual
 {
     internal static void ResetPedestalScale(Transform pedestalRoot)
@@ -51,7 +51,7 @@ internal static class MpChatLobbyPedestalVisual
         SetNonCustomPedestalRenderersVisible(pedestalRoot, false);
     }
 
-    // Arena rigs toggle active objects during intro/outro; do not deactivate body hierarchies (custom may parent there).
+    // arena rigs toggle active objects during intro/outro; do not deactivate body hierarchies (custom may parent there).
     internal static void ApplyArenaCustomAvatarVisibility(
         Transform poseRoot,
         Transform facadeRoot,
@@ -74,7 +74,7 @@ internal static class MpChatLobbyPedestalVisual
         SuppressVanillaArenaRig(facadeRoot, spawnedRoot.transform);
     }
 
-    // AvatarCore re-enables itself during intro/gameplay transitions; keep vanilla meshes off while custom is active.
+    // avatarCore re-enables itself during intro/gameplay transitions; keep vanilla meshes off while custom is active.
     internal static void SuppressVanillaArenaRig(Transform facadeRoot, Transform? customSpawnRoot)
     {
         if (facadeRoot == null)
@@ -101,7 +101,7 @@ internal static class MpChatLobbyPedestalVisual
         }
     }
 
-    // Cheap check before full hierarchy walks during periodic arena maintain.
+    // cheap check before full hierarchy walks during periodic arena maintain.
     internal static bool ArenaVanillaRigMayNeedSuppress(Transform facadeRoot, Transform? customSpawnRoot)
     {
         if (facadeRoot == null)
@@ -162,7 +162,7 @@ internal static class MpChatLobbyPedestalVisual
         }
     }
 
-    // Duel/platform avatars use BeatSaber.AvatarCore.Avatar, not BeatAvatarVisualController on the pose.
+    // duel/platform avatars use BeatSaber.AvatarCore.Avatar, not BeatAvatarVisualController on the pose.
     internal static void SetAvatarCoreAvatarsEnabled(Transform searchRoot, bool enabled)
     {
         if (searchRoot == null)

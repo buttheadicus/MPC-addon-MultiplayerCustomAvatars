@@ -20,15 +20,15 @@ internal sealed class MpChatLobbyLivePoseInput : IAvatarInput
 
     private const float MinBoneOffset = 0.12f;
 
-    // Reject collapsed multiplayer bones (intro / remote FPFC before first pose packet).
+    // reject collapsed multiplayer bones (intro / remote FPFC before first pose packet).
     private const float MinHeadToHandSeparationSq = 0.0025f;
 
-    // Tune multiplayer hand rotation (degrees, applied after saber alignment in HandPoseKnucklesAlongSaber).
+    // tune multiplayer hand rotation (degrees, applied after saber alignment in HandPoseKnucklesAlongSaber).
     private static readonly Vector3 RightHandRotationOffsetEuler = new(0f, 0f, 90f);
 
     private static readonly Vector3 LeftHandRotationOffsetEuler = new(0f, 0f, -90f);
 
-    // Hand position nudge in controller local space (meters): X right, Y up, Z forward along the device/saber.
+    // hand position nudge in controller local space (meters): X right, Y up, Z forward along the device/saber.
     private static readonly Vector3 RightHandPositionOffsetControllerLocal = Vector3.zero;
 
     private static readonly Vector3 LeftHandPositionOffsetControllerLocal = Vector3.zero;
@@ -51,7 +51,7 @@ internal sealed class MpChatLobbyLivePoseInput : IAvatarInput
 
 
 
-    // Let the rig rise when the head is above a fully extended stance (feet stay grounded in CA otherwise).
+    // let the rig rise when the head is above a fully extended stance (feet stay grounded in CA otherwise) (doesnt work with custom avatars lmao-im gonna fuse CA into this addon so i actually have control over it lol).
     public bool allowMaintainPelvisPosition => false;
 
 
@@ -229,7 +229,7 @@ internal sealed class MpChatLobbyLivePoseInput : IAvatarInput
 
 
 
-        // Never deactivate the pose root; custom avatar is parented there.
+        // never deactivate the pose root; custom avatar is parented there.
 
         if (_bodyTransform != null && _bodyTransform != _poseController.transform)
 

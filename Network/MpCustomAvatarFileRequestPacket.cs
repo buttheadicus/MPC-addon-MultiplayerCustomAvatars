@@ -8,7 +8,7 @@ public class MpCustomAvatarFileRequestPacket : MultiplayerCore.Networking.Abstra
 
     public string HashMd5Hex = "";
 
-    // Route the request to the avatar owner; empty broadcasts (legacy).
+    // route the request to the avatar owner; empty broadcasts (legacy).
     public string? TargetUserId;
 
     public override void Serialize(NetDataWriter writer)

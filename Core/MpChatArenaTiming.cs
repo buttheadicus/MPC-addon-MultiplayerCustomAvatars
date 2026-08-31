@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace MultiplayerChat.Core;
 
-// Arena spawn timing: intro/countdown is not active beatmap gameplay even when spawn controllers exist.
+// arena spawn timing: intro/countdown is not active beatmap gameplay even when spawn controllers exist.
 internal static class MpChatArenaTiming
 {
     private const float ArenaSpawnDuringSongIntervalSeconds = 2f;

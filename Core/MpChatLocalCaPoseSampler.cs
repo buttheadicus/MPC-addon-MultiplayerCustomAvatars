@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 
 namespace MultiplayerChat.Core;
 
-// Lobby mirror / local custom avatars: read Custom Avatars TrackingRig (FPFC, controller, VR) when MP pedestal pose stays static.
+// lobby mirror / local custom avatars: read Custom Avatars TrackingRig (FPFC, controller, VR) when MP pedestal pose stays static.
 internal static class MpChatLocalCaPoseSampler
 {
     private static bool _reflectionReady;

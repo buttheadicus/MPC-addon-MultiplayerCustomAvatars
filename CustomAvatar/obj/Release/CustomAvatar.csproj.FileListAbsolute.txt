@@ -1,0 +1,17 @@
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\obj\Release\CustomAvatar.csproj.AssemblyReference.cache
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\obj\Release\CustomAvatar.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\obj\Release\CustomAvatar.AssemblyInfoInputs.cache
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\obj\Release\CustomAvatar.AssemblyInfo.cs
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\obj\Release\CustomAvatar.csproj.CoreCompileInputs.cache
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\obj\Release\CustomAvatar.sourcelink.json
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\bin\Release\CustomAvatar.dll
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\bin\Release\CustomAvatar.pdb
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\bin\Release\AsmResolver.DotNet.dll
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\bin\Release\AsmResolver.PE.File.dll
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\bin\Release\AsmResolver.PE.dll
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\bin\Release\AsmResolver.dll
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\bin\Release\BepInEx.AssemblyPublicizer.MSBuild.dll
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\bin\Release\BepInEx.AssemblyPublicizer.dll
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\obj\Release\CustomAv.A77FC4AA.Up2Date
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\obj\Release\CustomAvatar.dll
+c:\Users\goria\MPC-addon-MultiplayerCustomAvatars\CustomAvatar\obj\Release\CustomAvatar.pdb

@@ -30,6 +30,16 @@
         "build": {
           "build/BepInEx.AssemblyPublicizer.MSBuild.props": {}
         }
+      },
+      "CustomAvatar/1.0.0": {
+        "type": "project",
+        "framework": ".NETFramework,Version=v4.7.2",
+        "compile": {
+          "bin/placeholder/CustomAvatar.dll": {}
+        },
+        "runtime": {
+          "bin/placeholder/CustomAvatar.dll": {}
+        }
       }
     }
   },
@@ -58,11 +68,17 @@
         "lib/netstandard2.1/BepInEx.AssemblyPublicizer.MSBuild.dll",
         "lib/netstandard2.1/BepInEx.AssemblyPublicizer.dll"
       ]
+    },
+    "CustomAvatar/1.0.0": {
+      "type": "project",
+      "path": "CustomAvatar/CustomAvatar.csproj",
+      "msbuildProject": "CustomAvatar/CustomAvatar.csproj"
     }
   },
   "projectFileDependencyGroups": {
     "net472": [
-      "BepInEx.AssemblyPublicizer.MSBuild >= 0.4.1"
+      "BepInEx.AssemblyPublicizer.MSBuild >= 0.4.1",
+      "CustomAvatar >= 1.0.0"
     ]
   },
   "packageFolders": {
@@ -98,7 +114,11 @@
         "net472": {
           "framework": "net472",
           "targetAlias": "net472",
-          "projectReferences": {}
+          "projectReferences": {
+            "c:\\Users\\goria\\MPC-addon-MultiplayerCustomAvatars\\CustomAvatar\\CustomAvatar.csproj": {
+              "projectPath": "c:\\Users\\goria\\MPC-addon-MultiplayerCustomAvatars\\CustomAvatar\\CustomAvatar.csproj"
+            }
+          }
         }
       },
       "warningProperties": {
@@ -111,7 +131,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "10.0.300"
+      "SdkAnalysisLevel": "10.0.400"
     },
     "frameworks": {
       "net472": {
@@ -124,7 +144,7 @@
             "version": "[0.4.1, )"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.301\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401\\RuntimeIdentifierGraph.json"
       }
     }
   }

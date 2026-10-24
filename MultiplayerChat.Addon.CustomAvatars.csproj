@@ -9,6 +9,11 @@
     <AddonManifestFile>customAvatars.addon.json</AddonManifestFile>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="CustomAvatar\**" />
+    <EmbeddedResource Remove="CustomAvatar\**" />
+    <None Remove="CustomAvatar\**" />
+  </ItemGroup>
+  <ItemGroup>
     <Reference Include="MultiplayerChat.Contracts">
       <HintPath>$(ContractsDllPath)</HintPath>
       <Private>false</Private>
@@ -21,10 +26,9 @@
       <HintPath>$(BeatSaberDir)\Libs\0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="CustomAvatar">
-      <HintPath>$(CustomAvatarHintPath)</HintPath>
+    <ProjectReference Include="CustomAvatar\CustomAvatar.csproj">
       <Private>false</Private>
-    </Reference>
+    </ProjectReference>
     <Reference Include="SiraUtil">
       <HintPath>$(BeatSaberDir)\Plugins\SiraUtil.dll</HintPath>
     </Reference>

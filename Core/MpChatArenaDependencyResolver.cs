@@ -113,16 +113,18 @@ internal static class MpChatArenaDependencyResolver
         return false;
     }
 
-    private static bool TryGetConnectedPlayer(
+    private static FieldInfo? ConnectedPlayerField;
+
+    internal static bool TryGetConnectedPlayer(
         MultiplayerAvatarPoseController pose,
         out IConnectedPlayer connectedPlayer)
     {
         connectedPlayer = null!;
 
-        var field = typeof(MultiplayerAvatarPoseController).GetField(
+        ConnectedPlayerField ??= typeof(MultiplayerAvatarPoseController).GetField(
             "_connectedPlayer",
             BindingFlags.Instance | BindingFlags.NonPublic);
-        if (field?.GetValue(pose) is IConnectedPlayer fromField)
+        if (ConnectedPlayerField?.GetValue(pose) is IConnectedPlayer fromField)
         {
             connectedPlayer = fromField;
             return true;

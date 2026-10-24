@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "dvCrjg7vNcQ=",
+  "success": true,
+  "projectFilePath": "c:\\Users\\goria\\MPC-addon-MultiplayerCustomAvatars\\CustomAvatar\\CustomAvatar.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\goria\\.nuget\\packages\\bepinex.assemblypublicizer.msbuild\\0.4.1\\bepinex.assemblypublicizer.msbuild.0.4.1.nupkg.sha512",
+    "C:\\Users\\goria\\.nuget\\packages\\isexternalinit\\1.0.3\\isexternalinit.1.0.3.nupkg.sha512",
+    "C:\\Users\\goria\\.nuget\\packages\\polysharp\\1.15.0\\polysharp.1.15.0.nupkg.sha512"
+  ],
+  "logs": []
+}

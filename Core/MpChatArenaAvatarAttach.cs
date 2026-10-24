@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using BeatSaber.AvatarCore;
 using UnityEngine;
 
@@ -12,16 +11,42 @@ internal static class MpChatArenaAvatarAttach
             return;
         if (!MpChatFeatures.LobbyCustomAvatarsInArena)
             return;
+        if (!MpCustomAvatarSyncManager.AnyRemoteHasCustomAvatar())
+            return;
 
-        var refreshed = new HashSet<int>();
         foreach (var facade in Object.FindObjectsOfType<MultiplayerConnectedPlayerFacade>(true))
         {
             if (facade == null || IsRedecoratorShadowFacade(facade))
                 continue;
-            refreshed.Add(facade.gameObject.GetInstanceID());
             RefreshAttachForFacadeRoot(facade.transform);
         }
+    }
 
+    internal static void TryAttachForUser(string userId)
+    {
+        if (string.IsNullOrEmpty(userId) || !MpCustomAvatarSyncManager.HasCustomAvatarHash(userId))
+            return;
+        if (!CustomAvatarDependenciesBootstrap.IsSessionActive())
+            return;
+        if (!MpChatFeatures.LobbyCustomAvatarsInArena)
+            return;
+
+        foreach (var facade in Object.FindObjectsOfType<MultiplayerConnectedPlayerFacade>(true))
+        {
+            if (facade == null || IsRedecoratorShadowFacade(facade))
+                continue;
+
+            var pose = SelectArenaPose(facade.transform);
+            if (pose == null)
+                continue;
+            if (!MpChatArenaDependencyResolver.TryGetConnectedPlayer(pose, out var player))
+                continue;
+            if (!string.Equals(player.userId, userId, System.StringComparison.Ordinal))
+                continue;
+
+            RefreshAttachForFacadeRoot(facade.transform);
+            return;
+        }
     }
 
     internal static void RefreshAttachForGameplay(MultiplayerConnectedPlayerFacade facade) =>
@@ -42,12 +67,48 @@ internal static class MpChatArenaAvatarAttach
 
         var pose = SelectArenaPose(facadeRoot);
         if (pose == null)
-        {
-            MultiplayerChat.Plugin.Log?.Warn(
-                $"[MPChat][LobbyAvatar] Arena attach: no platform pose under {facadeRoot.name}");
             return;
-        }
+        if (!ShouldAttachArenaDriver(pose))
+            return;
 
+        AttachToPose(pose, facadeRoot);
+    }
+
+    internal static void TryAttachToPose(MultiplayerAvatarPoseController pose)
+    {
+        if (!CustomAvatarDependenciesBootstrap.IsSessionActive())
+            return;
+        if (!MpChatFeatures.LobbyCustomAvatarsInArena)
+            return;
+        if (!string.Equals(pose.gameObject.scene.name, "GameCore", System.StringComparison.Ordinal))
+            return;
+        if (!ShouldAttachArenaDriver(pose))
+            return;
+        if (pose.GetComponentInParent<MultiplayerLobbyAvatarController>() != null)
+            return;
+        if (IsUnderBigAvatarIntro(pose.transform))
+            return;
+
+        var facadeRoot = MpChatArenaFacadeRoots.FindFrom(pose.transform);
+        if (facadeRoot == null || MpChatArenaFacadeRoots.IsRedecoratorShadow(facadeRoot))
+            return;
+
+        AttachToPose(pose, facadeRoot);
+    }
+
+    private static bool ShouldAttachArenaDriver(MultiplayerAvatarPoseController pose)
+    {
+        if (pose == null)
+            return false;
+        if (!MpChatArenaDependencyResolver.TryGetConnectedPlayer(pose, out var player) || player == null)
+            return false;
+        if (player.isMe)
+            return false;
+        return MpCustomAvatarSyncManager.HasCustomAvatarHash(player.userId);
+    }
+
+    private static void AttachToPose(MultiplayerAvatarPoseController pose, Transform facadeRoot)
+    {
         var driver = EnsurePoseDriver(pose, facadeRoot);
         if (driver == null)
             return;
@@ -59,26 +120,6 @@ internal static class MpChatArenaAvatarAttach
         driver.TryBeginStartup();
         driver.PromoteArenaAfterIntro();
         driver.KickArenaFromRemoteSync();
-    }
-
-    internal static void TryAttachToPose(MultiplayerAvatarPoseController pose)
-    {
-        if (!CustomAvatarDependenciesBootstrap.IsSessionActive())
-            return;
-        if (!MpChatFeatures.LobbyCustomAvatarsInArena)
-            return;
-        if (!string.Equals(pose.gameObject.scene.name, "GameCore", System.StringComparison.Ordinal))
-            return;
-        if (pose.GetComponentInParent<MultiplayerLobbyAvatarController>() != null)
-            return;
-        if (IsUnderBigAvatarIntro(pose.transform))
-            return;
-
-        var facadeRoot = MpChatArenaFacadeRoots.FindFrom(pose.transform);
-        if (facadeRoot == null || MpChatArenaFacadeRoots.IsRedecoratorShadow(facadeRoot))
-            return;
-
-        RefreshAttachForFacadeRoot(facadeRoot);
     }
 
     internal static bool CanAttemptArenaSpawn(MultiplayerAvatarPoseController? pose)

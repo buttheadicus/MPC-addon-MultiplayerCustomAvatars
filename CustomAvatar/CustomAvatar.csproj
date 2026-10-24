@@ -1,0 +1,92 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>CustomAvatar</AssemblyName>
+    <RootNamespace>CustomAvatar</RootNamespace>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <BeatSaberDir Condition="'$(BeatSaberDir)' == ''">D:\bsmanager\BSManager\BSInstances\MPCHAT developm</BeatSaberDir>
+    <DefineConstants>$(DefineConstants);UNITY_5_3_OR_NEWER</DefineConstants>
+    <NoWarn>CS0618;CS1591;CS0649;CS0436</NoWarn>
+    <LibRefs>$(MSBuildProjectDirectory)\LibRefs</LibRefs>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.1" PrivateAssets="all" />
+    <PackageReference Include="IsExternalInit" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="PolySharp" Version="1.15.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="0Harmony"><HintPath>$(BeatSaberDir)\Libs\0Harmony.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="AssetBundleLoadingTools"><HintPath>$(BeatSaberDir)\Plugins\AssetBundleLoadingTools.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BeatmapCore"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatmapCore.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BeatSaber.GameSettings"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.GameSettings.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BeatSaber.Settings"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.Settings.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BeatSaber.ViewSystem"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.ViewSystem.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BGLib.AppFlow" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.AppFlow.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BGLib.Polyglot"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.Polyglot.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BGLib.SaveDataCore"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.SaveDataCore.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BGLib.UnityExtension"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.UnityExtension.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BGNetCore"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGNetCore.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="BSML"><HintPath>$(BeatSaberDir)\Plugins\BSML.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DataModels"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\DataModels.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="DynamicBone" Publicize="true" Aliases="BeatSaberDynamicBone"><HintPath>$(BeatSaberDir)\Libs\DynamicBone.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="FinalIK" Publicize="true" Aliases="BeatSaberFinalIK"><HintPath>$(BeatSaberDir)\Libs\FinalIK.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="GameplayCore"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\GameplayCore.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Helpers" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Helpers.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Hive.Versioning"><HintPath>$(BeatSaberDir)\Libs\Hive.Versioning.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="HMLib" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\HMLib.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="HMRendering"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\HMRendering.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="HMUI" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\HMUI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Interactable"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Interactable.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="IPA.Loader"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\IPA.Loader.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Main" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Main.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Menu.CommonLib"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Menu.CommonLib.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(BeatSaberDir)\Libs\Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OpenVR"><HintPath>$(LibRefs)\OpenVR.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="protobuf-net"><HintPath>$(BeatSaberDir)\Libs\protobuf-net.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Rendering" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Rendering.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="SiraUtil"><HintPath>$(BeatSaberDir)\Plugins\SiraUtil.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.InputSystem"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Unity.InputSystem.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.Mathematics"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Unity.Mathematics.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.TextMeshPro"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Unity.TextMeshPro.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.XR.Hands" Publicize="true"><HintPath>$(LibRefs)\Unity.XR.Hands.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Unity.XR.OpenXR"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Unity.XR.OpenXR.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AnimationModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.AnimationModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AssetBundleModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.AssetBundleModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.AudioModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.AudioModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.CoreModule" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.CoreModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.ImageConversionModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.PhysicsModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.SpatialTracking" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.SpatialTracking.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.SubsystemsModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.SubsystemsModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.UIModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.UIModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.VRModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.VRModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityEngine.XRModule"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.XRModule.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="VRUI" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\VRUI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Zenject" Publicize="true"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Zenject.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Zenject-usage"><HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Zenject-usage.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="UI\Views\*.bsml" />
+    <EmbeddedResource Include="Resources\Assets" />
+    <EmbeddedResource Include="Resources\icon.png" />
+    <EmbeddedResource Include="manifest.json">
+      <LogicalName>CustomAvatar.manifest.json</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <Target Name="CopyFusedCustomAvatar" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Copy SourceFiles="$(OutputPath)CustomAvatar.dll" DestinationFolder="$(BeatSaberDir)\Plugins" SkipUnchangedFiles="true" Condition="Exists('$(BeatSaberDir)')" />
+    <Copy SourceFiles="$(OutputPath)CustomAvatar.dll" DestinationFiles="$(MSBuildProjectDirectory)\..\releases\Plugins\CustomAvatar.dll" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

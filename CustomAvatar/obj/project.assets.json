@@ -1,0 +1,201 @@
+{
+  "version": 4,
+  "targets": {
+    "net472": {
+      "BepInEx.AssemblyPublicizer.MSBuild/0.4.1": {
+        "type": "package",
+        "compile": {
+          "lib/net472/AsmResolver.DotNet.dll": {},
+          "lib/net472/AsmResolver.PE.File.dll": {},
+          "lib/net472/AsmResolver.PE.dll": {},
+          "lib/net472/AsmResolver.dll": {},
+          "lib/net472/BepInEx.AssemblyPublicizer.MSBuild.dll": {},
+          "lib/net472/BepInEx.AssemblyPublicizer.dll": {}
+        },
+        "runtime": {
+          "lib/net472/AsmResolver.DotNet.dll": {},
+          "lib/net472/AsmResolver.PE.File.dll": {},
+          "lib/net472/AsmResolver.PE.dll": {},
+          "lib/net472/AsmResolver.dll": {},
+          "lib/net472/BepInEx.AssemblyPublicizer.MSBuild.dll": {},
+          "lib/net472/BepInEx.AssemblyPublicizer.dll": {}
+        },
+        "contentFiles": {
+          "contentFiles/cs/any/IgnoresAccessChecksToAttribute.cs": {
+            "buildAction": "Compile",
+            "codeLanguage": "cs",
+            "copyToOutput": false
+          }
+        },
+        "build": {
+          "build/BepInEx.AssemblyPublicizer.MSBuild.props": {}
+        }
+      },
+      "IsExternalInit/1.0.3": {
+        "type": "package",
+        "contentFiles": {
+          "contentFiles/cs/net40/IsExternalInit/IsExternalInit.cs": {
+            "buildAction": "Compile",
+            "codeLanguage": "cs",
+            "copyToOutput": false
+          }
+        },
+        "build": {
+          "build/IsExternalInit.props": {}
+        }
+      },
+      "PolySharp/1.15.0": {
+        "type": "package",
+        "build": {
+          "buildTransitive/PolySharp.targets": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "BepInEx.AssemblyPublicizer.MSBuild/0.4.1": {
+      "sha512": "bbTaXa0CKDuap0vDR+NkSz9crQIYhMvIbId9njUajYZAcr8OTuVcyiSlexzeGxfkYAbbn0z9YpgbIoeyHADXqA==",
+      "type": "package",
+      "path": "bepinex.assemblypublicizer.msbuild/0.4.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "bepinex.assemblypublicizer.msbuild.0.4.1.nupkg.sha512",
+        "bepinex.assemblypublicizer.msbuild.nuspec",
+        "build/BepInEx.AssemblyPublicizer.MSBuild.props",
+        "contentFiles/cs/any/IgnoresAccessChecksToAttribute.cs",
+        "lib/net472/AsmResolver.DotNet.dll",
+        "lib/net472/AsmResolver.PE.File.dll",
+        "lib/net472/AsmResolver.PE.dll",
+        "lib/net472/AsmResolver.dll",
+        "lib/net472/BepInEx.AssemblyPublicizer.MSBuild.dll",
+        "lib/net472/BepInEx.AssemblyPublicizer.dll",
+        "lib/netstandard2.1/AsmResolver.DotNet.dll",
+        "lib/netstandard2.1/AsmResolver.PE.File.dll",
+        "lib/netstandard2.1/AsmResolver.PE.dll",
+        "lib/netstandard2.1/AsmResolver.dll",
+        "lib/netstandard2.1/BepInEx.AssemblyPublicizer.MSBuild.dll",
+        "lib/netstandard2.1/BepInEx.AssemblyPublicizer.dll"
+      ]
+    },
+    "IsExternalInit/1.0.3": {
+      "sha512": "jcdN7vpDwjnV7U9KGCv/oNIWHJ/RIbyrpVsLQL2qbj6Cbi5U3iafKsaMn1rP+qCbkLbkB0v6oAwbVEkqrUnlyg==",
+      "type": "package",
+      "path": "isexternalinit/1.0.3",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/IsExternalInit.props",
+        "content/net20/IsExternalInit/IsExternalInit.cs",
+        "content/net40/IsExternalInit/IsExternalInit.cs",
+        "content/net5.0/IsExternalInit/IsExternalInit.cs",
+        "content/netstandard1.0/IsExternalInit/IsExternalInit.cs",
+        "content/netstandard2.0/IsExternalInit/IsExternalInit.cs",
+        "contentFiles/cs/net20/IsExternalInit/IsExternalInit.cs",
+        "contentFiles/cs/net40/IsExternalInit/IsExternalInit.cs",
+        "contentFiles/cs/net5.0/IsExternalInit/IsExternalInit.cs",
+        "contentFiles/cs/netstandard1.0/IsExternalInit/IsExternalInit.cs",
+        "contentFiles/cs/netstandard2.0/IsExternalInit/IsExternalInit.cs",
+        "icon.png",
+        "isexternalinit.1.0.3.nupkg.sha512",
+        "isexternalinit.nuspec"
+      ]
+    },
+    "PolySharp/1.15.0": {
+      "sha512": "FbU0El+EEjdpuIX4iDbeS7ki1uzpJPx8vbqOzEtqnl1GZeAGJfq+jCbxeJL2y0EPnUNk8dRnnqR2xnYXg9Tf+g==",
+      "type": "package",
+      "path": "polysharp/1.15.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "analyzers/dotnet/cs/PolySharp.SourceGenerators.dll",
+        "build/PolySharp.targets",
+        "buildTransitive/PolySharp.targets",
+        "icon.png",
+        "polysharp.1.15.0.nupkg.sha512",
+        "polysharp.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net472": [
+      "BepInEx.AssemblyPublicizer.MSBuild >= 0.4.1",
+      "IsExternalInit >= 1.0.3",
+      "PolySharp >= 1.15.0"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\goria\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "c:\\Users\\goria\\MPC-addon-MultiplayerCustomAvatars\\CustomAvatar\\CustomAvatar.csproj",
+      "projectName": "CustomAvatar",
+      "projectPath": "c:\\Users\\goria\\MPC-addon-MultiplayerCustomAvatars\\CustomAvatar\\CustomAvatar.csproj",
+      "packagesPath": "C:\\Users\\goria\\.nuget\\packages\\",
+      "outputPath": "c:\\Users\\goria\\MPC-addon-MultiplayerCustomAvatars\\CustomAvatar\\obj\\",
+      "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
+      "configFilePaths": [
+        "C:\\Users\\goria\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net472"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net472": {
+          "framework": "net472",
+          "targetAlias": "net472",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "10.0.400"
+    },
+    "frameworks": {
+      "net472": {
+        "framework": "net472",
+        "targetAlias": "net472",
+        "dependencies": {
+          "BepInEx.AssemblyPublicizer.MSBuild": {
+            "suppressParent": "All",
+            "target": "Package",
+            "version": "[0.4.1, )"
+          },
+          "IsExternalInit": {
+            "suppressParent": "All",
+            "target": "Package",
+            "version": "[1.0.3, )"
+          },
+          "PolySharp": {
+            "suppressParent": "All",
+            "target": "Package",
+            "version": "[1.15.0, )"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401\\RuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

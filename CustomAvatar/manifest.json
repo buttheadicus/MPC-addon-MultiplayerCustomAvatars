@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/bsmg/BSIPA-MetadataFileSchema/master/Schema.json",
+  "id": "CustomAvatar",
+  "name": "Custom Avatars",
+  "author": "Custom Avatars Contributors",
+  "version": "5.4.13",
+  "gameVersion": "^1.40.0",
+  "description": "Allows the use of custom player models for body presence.",
+  "dependsOn": {
+    "AssetBundleLoadingTools": "^1.0.0",
+    "BeatSaberMarkupLanguage": "^1.12.0",
+    "BSIPA": "^4.3.0",
+    "DynamicBone": "^1.2.0",
+    "FinalIK": "^1.9.0",
+    "protobuf-net": "^3.0.0",
+    "SiraUtil": "^3.1.3"
+  },
+  "links": {
+    "project-source": "https://github.com/nicoco007/BeatSaberCustomAvatars"
+  }
+}

@@ -259,6 +259,37 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
             return RemoteByUserId.TryGetValue(userId, out state!);
     }
 
+    internal static bool IsRealCustomHash(string? hash)
+    {
+        if (string.IsNullOrEmpty(hash))
+            return false;
+        var trimmed = hash!.Trim();
+        return CustomAvatarHashUtil.LooksLikeMd5Hex(trimmed) &&
+               !CustomAvatarInstallListing.IsVanillaDescriptorHash(trimmed);
+    }
+
+    internal static bool HasCustomAvatarHash(string userId)
+    {
+        if (string.IsNullOrEmpty(userId) || !TryGetRemoteState(userId, out var row))
+            return false;
+        return IsRealCustomHash(row.AvatarDescriptorId);
+    }
+
+    // nobody else sent a custom hash: skip arena attach/scans instead of ticking vanilla remotes.
+    internal static bool AnyRemoteHasCustomAvatar()
+    {
+        lock (RemoteLock)
+        {
+            foreach (var row in RemoteByUserId.Values)
+            {
+                if (IsRealCustomHash(row.AvatarDescriptorId))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
     public static void ApplyReceived(string userId, MpCustomAvatarPosePacket packet)
     {
         if (!MpChatFeatures.LobbyCustomAvatars)
@@ -321,6 +352,10 @@ public sealed class MpCustomAvatarSyncManager : MonoBehaviour, IInitializable
 
             if (MpChatLobbyDiagnostics.AnyGameCoreLoaded())
             {
+                var incomingHash = descriptor?.Trim().ToUpperInvariant() ?? "";
+                if ((descriptorChanged || newRemoteRow) && IsRealCustomHash(incomingHash))
+                    MpChatArenaAvatarAttach.TryAttachForUser(userId);
+
                 MpChatLobbyCustomAvatarDriverRegistry.ForUser(
                     userId,
                     driver => driver.KickArenaFromRemoteSync(),

@@ -19,6 +19,8 @@ internal static class MpChatArenaAvatarPoseStartPatch
             return;
         if (!string.Equals(__instance.gameObject.scene.name, "GameCore", System.StringComparison.Ordinal))
             return;
+        if (!MpCustomAvatarSyncManager.AnyRemoteHasCustomAvatar())
+            return;
         if (__instance.GetComponentInParent<MultiplayerLobbyAvatarController>() != null)
             return;
         if (MpChatArenaAvatarAttach.IsUnderBigAvatarIntro(__instance.transform))

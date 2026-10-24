@@ -59,7 +59,7 @@ internal static class MpChatLobbyPedestalVisual
         Transform? customSpawnRoot)
     {
         avatarInput?.SetVanillaRenderersVisible(false);
-        SetVanillaBeatSaberMeshRenderersVisible(poseRoot, false);
+        SetVanillaBeatSaberMeshRenderersVisible(poseRoot, false, customSpawnRoot);
         SuppressVanillaArenaRig(facadeRoot, customSpawnRoot);
     }
 
@@ -70,7 +70,7 @@ internal static class MpChatLobbyPedestalVisual
         float uniformScale)
     {
         EnsureSpawnedVisible(spawnedRoot, uniformScale);
-        SetVanillaBeatSaberMeshRenderersVisible(poseRoot, false);
+        SetVanillaBeatSaberMeshRenderersVisible(poseRoot, false, spawnedRoot.transform);
         SuppressVanillaArenaRig(facadeRoot, spawnedRoot.transform);
     }
 
@@ -175,7 +175,10 @@ internal static class MpChatLobbyPedestalVisual
         }
     }
 
-    private static void SetVanillaBeatSaberMeshRenderersVisible(Transform poseRoot, bool visible)
+    private static void SetVanillaBeatSaberMeshRenderersVisible(
+        Transform poseRoot,
+        bool visible,
+        Transform? customSpawnRoot)
     {
         if (poseRoot == null)
             return;
@@ -184,7 +187,7 @@ internal static class MpChatLobbyPedestalVisual
         {
             if (renderer == null || ShouldSkipPedestalRenderer(renderer.transform))
                 continue;
-            if (IsCustomAvatarRenderer(renderer))
+            if (IsCustomAvatarRenderer(renderer, customSpawnRoot))
                 continue;
 
             renderer.enabled = visible;
@@ -231,39 +234,24 @@ internal static class MpChatLobbyPedestalVisual
                 return true;
             if (cur.name.StartsWith("MpChatLobbyPoseProxy", StringComparison.Ordinal))
                 return true;
-            if (IsSaberHierarchy(cur))
-                return true;
-        }
 
-        return false;
-    }
-
-    private static bool IsSaberHierarchy(Transform t)
-    {
-        for (var cur = t; cur != null; cur = cur.parent)
-        {
             var n = cur.name;
             if (n.IndexOf("Saber", StringComparison.OrdinalIgnoreCase) >= 0)
                 return true;
-            if (n.IndexOf("Sabers", StringComparison.OrdinalIgnoreCase) >= 0)
-                return true;
         }
 
         return false;
     }
 
-    internal static bool IsCustomAvatarRenderer(Renderer renderer)
+    internal static bool IsCustomAvatarRenderer(Renderer renderer) =>
+        IsCustomAvatarRenderer(renderer, null);
+
+    internal static bool IsCustomAvatarRenderer(Renderer renderer, Transform? customSpawnRoot)
     {
-        foreach (var mb in renderer.GetComponentsInParent<MonoBehaviour>(true))
-        {
-            if (mb == null)
-                continue;
-
-            var ns = mb.GetType().Namespace;
-            if (ns != null && ns.StartsWith("CustomAvatar", StringComparison.Ordinal))
-                return true;
-        }
-
-        return false;
+        if (renderer == null)
+            return false;
+        if (customSpawnRoot != null && renderer.transform.IsChildOf(customSpawnRoot))
+            return true;
+        return renderer.GetComponentInParent<CustomAvatar.Avatar.SpawnedAvatar>(true) != null;
     }
 }

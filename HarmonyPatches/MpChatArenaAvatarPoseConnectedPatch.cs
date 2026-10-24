@@ -19,6 +19,8 @@ internal static class MpChatArenaAvatarPoseConnectedPatch
             return;
         if (!string.Equals(__instance.gameObject.scene.name, "GameCore", System.StringComparison.Ordinal))
             return;
+        if (!MpCustomAvatarSyncManager.AnyRemoteHasCustomAvatar())
+            return;
 
         MpChatArenaAvatarAttach.TryAttachToPose(__instance);
     }

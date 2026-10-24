@@ -47,9 +47,15 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
 
     private float _nextArenaMaintainRealtime;
 
+    private float _nextArenaSpawnRetryRealtime;
+
+    private Transform? _cachedFacadeRoot;
+
     private const float ArenaMaintainIntervalSeconds = 0.75f;
 
     private const float ArenaGameplayMaintainIntervalSeconds = 8f;
+
+    private const float ArenaSpawnRetryIntervalSeconds = 0.5f;
 
     private float _nextLobbyVisualMaintainRealtime;
 
@@ -443,8 +449,15 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
     private bool IsArenaContext() =>
         string.Equals(gameObject.scene.name, "GameCore", StringComparison.Ordinal);
 
-    private Transform? GetFacadeRoot() =>
-        MpChatArenaFacadeRoots.FindFrom(_poseController != null ? _poseController.transform : transform);
+    private Transform? GetFacadeRoot()
+    {
+        if (_cachedFacadeRoot != null)
+            return _cachedFacadeRoot;
+
+        _cachedFacadeRoot = MpChatArenaFacadeRoots.FindFrom(
+            _poseController != null ? _poseController.transform : transform);
+        return _cachedFacadeRoot;
+    }
 
     private void ForceRefresh(bool forceRespawn, bool bypassPedestalDefer = false)
     {
@@ -738,8 +751,11 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
 
         if (!MpCustomAvatarSyncManager.TryGetRemoteState(_connectedPlayer.userId, out var row))
         {
-            if (_spawnedAvatar == null && _loadCoroutine == null)
+            if (!IsArenaContext() && _spawnedAvatar == null && _loadCoroutine == null)
                 MpCustomAvatarSyncManager.ScheduleJoinRetry(_connectedPlayer.userId);
+
+            if (IsArenaContext() && _spawnedAvatar == null && _loadCoroutine == null)
+                return;
 
             RestoreVanillaFallback();
             return;
@@ -953,7 +969,16 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (!IsArenaContext() && !DependenciesReady)
+        if (!IsArenaContext() && MpChatAvatarWorkloadGate.GameCoreLoadedThisFrame)
+            return;
+
+        if (IsArenaContext())
+        {
+            TickArena();
+            return;
+        }
+
+        if (!DependenciesReady)
         {
             if (Time.realtimeSinceStartup >= _nextLobbySpawnRetryRealtime)
             {
@@ -965,46 +990,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
                 return;
         }
 
-        if (IsArenaContext())
-        {
-            var facadeRoot = GetFacadeRoot();
-            var needsSpawn = _spawnedAvatar == null && _loadCoroutine == null;
-
-            if (facadeRoot != null && (needsSpawn || Time.realtimeSinceStartup >= _nextArenaMaintainRealtime))
-            {
-                if (!needsSpawn)
-                    _nextArenaMaintainRealtime = Time.realtimeSinceStartup + GetArenaMaintainIntervalSeconds();
-
-                if (needsSpawn || !MpChatPerformanceGate.ShouldBlockAvatarHeavyWork)
-                {
-                    var arenaPose = MpChatArenaAvatarAttach.SelectArenaPose(facadeRoot);
-                    if (arenaPose != null)
-                        SyncArenaPose(arenaPose);
-                }
-            }
-
-            if (!DependenciesReady)
-                TryBeginStartup();
-
-            if (needsSpawn || Time.realtimeSinceStartup >= _nextArenaMaintainRealtime)
-            {
-                if (needsSpawn || !MpChatPerformanceGate.ShouldBlockAvatarHeavyWork)
-                {
-                    TryReparentSpawnToActiveArenaPose();
-                    TryPromoteArenaIkIfReady();
-                }
-            }
-
-            if (needsSpawn && DependenciesReady && CanAttemptArenaSpawn())
-            {
-                if (UsesLocalAvatarHash())
-                    RefreshFromLocalAvatarSettings();
-                else
-                    RefreshFromSyncState();
-            }
-        }
-
-        if (!DependenciesReady || _poseController == null)
+        if (_poseController == null)
             return;
 
         if (_spawnedAvatar == null)
@@ -1016,16 +1002,13 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
             }
 
             if (!string.IsNullOrEmpty(_lastSpawnedHash) && _loadCoroutine == null &&
-                !MpChatPerformanceGate.ShouldBlockAvatarHeavyWorkForDriver(IsArenaContext()))
+                !MpChatPerformanceGate.ShouldBlockAvatarHeavyWorkForDriver(false))
             {
-                if (!IsArenaContext())
-                {
-                    if (Time.realtimeSinceStartup < _nextLobbySpawnRetryRealtime)
-                        return;
+                if (Time.realtimeSinceStartup < _nextLobbySpawnRetryRealtime)
+                    return;
 
-                    _nextLobbySpawnRetryRealtime = Time.realtimeSinceStartup +
-                        MpChatLobbyCustomAvatarDriverRegistry.GetLobbySpawnRetryIntervalSeconds();
-                }
+                _nextLobbySpawnRetryRealtime = Time.realtimeSinceStartup +
+                    MpChatLobbyCustomAvatarDriverRegistry.GetLobbySpawnRetryIntervalSeconds();
 
                 _lastSpawnedHash = null;
                 _finalizeComplete = false;
@@ -1038,7 +1021,7 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
             return;
         }
 
-        if (!IsArenaContext() && Time.realtimeSinceStartup < _nextLobbyVisualMaintainRealtime)
+        if (Time.realtimeSinceStartup < _nextLobbyVisualMaintainRealtime)
             return;
 
         var spawnedGo = _spawnedAvatar.gameObject;
@@ -1048,35 +1031,105 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
             return;
         }
 
-        if (IsArenaContext())
+        _nextLobbyVisualMaintainRealtime = Time.realtimeSinceStartup +
+            MpChatLobbyCustomAvatarDriverRegistry.GetLobbyVisualMaintainIntervalSeconds();
+        MpChatLobbyPedestalVisual.EnsureSpawnedVisible(spawnedGo, _lastAppliedScale);
+        MpChatLobbyPedestalVisual.ApplyCustomAvatarVisibility(_poseController.transform, _avatarInput);
+    }
+
+    private void TickArena()
+    {
+        var now = Time.realtimeSinceStartup;
+
+        if (!DependenciesReady)
         {
-            if (Time.realtimeSinceStartup >= _nextArenaMaintainRealtime)
+            if (now >= _nextArenaSpawnRetryRealtime)
             {
-                _nextArenaMaintainRealtime = Time.realtimeSinceStartup + GetArenaMaintainIntervalSeconds();
-                var facadeRoot = GetFacadeRoot();
-                if (facadeRoot != null)
-                {
-                    if (MpChatPerformanceGate.ShouldBlockAvatarHeavyWork)
-                    {
-                        MpChatLobbyPedestalVisual.EnsureSpawnedVisible(spawnedGo, _lastAppliedScale);
-                    }
-                    else if (MpChatLobbyPedestalVisual.ArenaVanillaRigMayNeedSuppress(
-                                 facadeRoot, spawnedGo.transform))
-                    {
-                        MpChatLobbyPedestalVisual.ReapplyArenaSpawnedVisibility(
-                            _poseController.transform, facadeRoot, spawnedGo, _lastAppliedScale);
-                        MpChatLobbyPedestalVisual.ApplyArenaCustomAvatarVisibility(
-                            _poseController.transform, facadeRoot, _avatarInput, spawnedGo.transform);
-                    }
-                }
+                _nextArenaSpawnRetryRealtime = now + ArenaSpawnRetryIntervalSeconds;
+                TryBeginStartup();
             }
+
+            return;
         }
-        else
+
+        if (_poseController == null)
+            return;
+
+        var needsSpawn = _spawnedAvatar == null && _loadCoroutine == null;
+        if (needsSpawn)
         {
-            _nextLobbyVisualMaintainRealtime = Time.realtimeSinceStartup +
-                MpChatLobbyCustomAvatarDriverRegistry.GetLobbyVisualMaintainIntervalSeconds();
+            if (now < _nextArenaSpawnRetryRealtime)
+                return;
+
+            _nextArenaSpawnRetryRealtime = now + ArenaSpawnRetryIntervalSeconds;
+
+            if (!UsesLocalAvatarHash() &&
+                (_connectedPlayer == null ||
+                 !MpCustomAvatarSyncManager.HasCustomAvatarHash(_connectedPlayer.userId)))
+                return;
+
+            if (!string.IsNullOrEmpty(_pendingHash))
+            {
+                TryResumePendingLoad();
+                return;
+            }
+
+            var facadeRoot = GetFacadeRoot();
+            if (facadeRoot != null && !MpChatPerformanceGate.ShouldBlockAvatarHeavyWork)
+            {
+                var arenaPose = MpChatArenaAvatarAttach.SelectArenaPose(facadeRoot);
+                if (arenaPose != null)
+                    SyncArenaPose(arenaPose);
+            }
+
+            if (CanAttemptArenaSpawn())
+            {
+                if (UsesLocalAvatarHash())
+                    RefreshFromLocalAvatarSettings();
+                else
+                    RefreshFromSyncState();
+            }
+
+            return;
+        }
+
+        if (_loadCoroutine != null || _spawnedAvatar == null)
+            return;
+
+        if (now < _nextArenaMaintainRealtime)
+            return;
+
+        _nextArenaMaintainRealtime = now + GetArenaMaintainIntervalSeconds();
+
+        if (!MpChatPerformanceGate.ShouldBlockAvatarHeavyWork)
+        {
+            TryReparentSpawnToActiveArenaPose();
+            TryPromoteArenaIkIfReady();
+        }
+
+        var spawnedGo = _spawnedAvatar.gameObject;
+        if (spawnedGo == null)
+        {
+            _spawnedAvatar = null;
+            return;
+        }
+
+        var spawnedFacade = GetFacadeRoot();
+        if (spawnedFacade == null)
+            return;
+
+        if (MpChatPerformanceGate.ShouldBlockAvatarHeavyWork)
+        {
             MpChatLobbyPedestalVisual.EnsureSpawnedVisible(spawnedGo, _lastAppliedScale);
-            MpChatLobbyPedestalVisual.ApplyCustomAvatarVisibility(_poseController.transform, _avatarInput);
+            return;
+        }
+
+        if (MpChatLobbyPedestalVisual.ArenaVanillaRigMayNeedSuppress(spawnedFacade, spawnedGo.transform))
+        {
+            MpChatLobbyPedestalVisual.ReapplyArenaSpawnedVisibility(
+                _poseController.transform, spawnedFacade, spawnedGo, _lastAppliedScale);
+            MpChatLobbyPedestalVisual.ApplyArenaCustomAvatarVisibility(
+                _poseController.transform, spawnedFacade, _avatarInput, spawnedGo.transform);
         }
     }
 
@@ -1306,6 +1359,13 @@ public sealed class MpChatLobbyCustomAvatarDriver : MonoBehaviour
 
     private void RestoreVanillaFallback()
     {
+        // arena vanilla remotes are already showing BeatAvatar; do not walk the facade.
+        if (IsArenaContext() && _spawnedAvatar == null && _loadCoroutine == null)
+        {
+            _pendingHash = null;
+            return;
+        }
+
         var userId = _connectedPlayer?.userId ?? gameObject.name;
         if (_spawnedAvatar != null)
         {

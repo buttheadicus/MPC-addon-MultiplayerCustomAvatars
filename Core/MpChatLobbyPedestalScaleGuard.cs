@@ -10,6 +10,8 @@ public sealed class MpChatLobbyPedestalScaleGuard : MonoBehaviour
     {
         if (!MpChatFeatures.LobbyCustomAvatars || !ModSettings.EnableLobbyCustomAvatars)
             return;
+        if (MpChatAvatarWorkloadGate.GameCoreLoadedThisFrame)
+            return;
 
         var driver = GetComponent<MpChatLobbyCustomAvatarDriver>();
         if (driver != null && driver.HasActiveCustomAvatar)
